@@ -3,18 +3,18 @@
     <channel>
         <title>Egangnal</title>
         <item>
-            <title>1.0.0</title>
-            <pubDate>Thu, 20 Aug 2026 00:54:08 +0800</pubDate>
-            <link>https://github.com/leebh6045-lang/Egangnal/releases/tag/v1.0.0</link>
-            <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <title>1.0.1</title>
+            <pubDate>Thu, 20 Aug 2026 14:38:20 +0800</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure
-  url="https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.0/Egangnal-1.0.0.zip"
-  length="3940412"
-  type="application/octet-stream"
-  sparkle:edSignature="MeAUCLXuj8BvF8dKyFFBR8xuoFZ8gEgtsxcRifgSKVC7cOfVbMvtCzoyjldYteOeGnJMwXNAzYCnHdhfzRTgDw=="/>
+            <description sparkle:format="markdown"><![CDATA[# Egangnal 1.0.1
+
+- 新增设置页手动检查更新功能，可通过 Sparkle 获取后续版本。
+- 更新应用图标为简洁的蝴蝶图案。
+]]></description>
+            <enclosure url="https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.1/Egangnal-1.0.1.zip" length="3913855" type="application/octet-stream" sparkle:edSignature="SXVbV3qUsFJTDusbUCcN0SqilOsTWEzoOmvFw4WQxzKFJzNEonJRdwvOgFb4ATFJqENdGCJJf7n7ReeC+4NHAA=="/>
         </item>
     </channel>
 </rss>
