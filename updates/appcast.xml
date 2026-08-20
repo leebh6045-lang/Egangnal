@@ -10,7 +10,11 @@
             <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.0/Egangnal-1.0.0.zip" length="4412591" type="application/octet-stream" sparkle:edSignature="g3xRX/vdC417Er5QL2cOlGF71izwWxz2Via8rT09fKi9atb1LT7lO8iLIES8SgFxUhSlAZABcyPIU7xTMQXGBw=="/>
+            <enclosure
+  url="https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.0/Egangnal-1.0.0.zip"
+  length="3940412"
+  type="application/octet-stream"
+  sparkle:edSignature="MeAUCLXuj8BvF8dKyFFBR8xuoFZ8gEgtsxcRifgSKVC7cOfVbMvtCzoyjldYteOeGnJMwXNAzYCnHdhfzRTgDw=="/>
         </item>
     </channel>
 </rss>
