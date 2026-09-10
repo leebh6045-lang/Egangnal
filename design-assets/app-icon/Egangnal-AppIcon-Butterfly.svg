@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="paper" x1="150" y1="112" x2="874" y2="920" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F7F9FC"/>
+    </linearGradient>
+  </defs>
+
+  <!-- macOS supplies the outer shadow from this transparent rounded silhouette. -->
+  <rect x="64" y="64" width="896" height="896" rx="204" fill="url(#paper)"/>
+  <rect x="65.5" y="65.5" width="893" height="893" rx="202.5" fill="none" stroke="#D5DDE7" stroke-width="3"/>
+
+  <!-- The butterfly keeps only its wing silhouette, head, and two short antennae. -->
+  <g fill="none" stroke="#17212B" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Short antennae stop well inside the icon's visual bounds. -->
+    <path d="M 498 372 C 492 334, 480 298, 460 270" stroke-width="18"/>
+    <path d="M 526 372 C 532 334, 544 298, 564 270" stroke-width="18"/>
+
+    <!-- Upper wings -->
+    <path d="M 486 410 C 430 294, 282 260, 220 350 C 166 430, 250 516, 466 466"/>
+    <path d="M 538 410 C 594 294, 742 260, 804 350 C 858 430, 774 516, 558 466"/>
+
+    <!-- Lower wings -->
+    <path d="M 470 466 C 326 486, 246 560, 286 650 C 322 732, 430 624, 496 496"/>
+    <path d="M 554 466 C 698 486, 778 560, 738 650 C 702 732, 594 624, 528 496"/>
+  </g>
+
+  <circle cx="512" cy="388" r="28" fill="#17212B"/>
+  <!-- The connector remains fully inside the wing silhouette. -->
+  <rect x="490" y="402" width="44" height="128" rx="22" fill="#17212B"/>
+</svg>

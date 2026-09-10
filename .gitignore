@@ -1,0 +1,20 @@
+.DS_Store
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# Sparkle signing material (must stay outside the repository)
+*Sparkle-private-key*
+
+# Build and test output
+build/
+DerivedData/
+dist/
+*.xcresult
+
+# Swift Package Manager
+.build/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
