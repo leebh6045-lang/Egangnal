@@ -84,6 +84,7 @@ struct WordQuizView: View {
     init(
         space: LanguageSpace,
         candidateSource: any WordQuizCandidateProviding,
+        lexiconCandidateSource: (any LexiconQuizCandidateProviding)? = nil,
         settingsStore: AppSettingsStore,
         soundPlayer: any WordQuizSoundPlaying,
         openWorkspace: @escaping () -> Void,
@@ -97,7 +98,8 @@ struct WordQuizView: View {
         _store = State(
             initialValue: WordQuizStore(
                 space: space,
-                candidateSource: candidateSource
+                candidateSource: candidateSource,
+                lexiconCandidateSource: lexiconCandidateSource
             )
         )
     }
@@ -115,6 +117,8 @@ struct WordQuizView: View {
         }
         .onAppear {
             store.load()
+            // 词库范围用户随时可能切过去，候选在进入页面时备好一次。
+            store.loadLexiconCandidatesIfNeeded()
             installExitInterceptor()
         }
         .onChange(of: store.currentQuestion?.id) {
@@ -313,8 +317,15 @@ struct WordQuizView: View {
                 .controlSize(.large)
                 .accessibilityIdentifier("wordQuiz.range")
 
-                dateSelector
-                    .frame(height: 44)
+                // 日期与等级是同一位置的二级选择：范围选了哪个，就显示对应的细分。
+                Group {
+                    if store.isLexiconScoped {
+                        lexiconLevelSelector
+                    } else {
+                        dateSelector
+                    }
+                }
+                .frame(height: 44)
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -397,6 +408,24 @@ struct WordQuizView: View {
         }
     }
 
+    /// 词库范围的等级细分。等级是"考哪一批词"的一部分，因此与范围放在同一组控件里。
+    private var lexiconLevelSelector: some View {
+        Picker("词库等级", selection: lexiconLevelBinding) {
+            Text("全部").tag(VocabularyLevel?.none)
+            ForEach(VocabularyLevel.allCases) { level in
+                Text(level.title).tag(VocabularyLevel?.some(level))
+            }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .font(.body.weight(.medium))
+        .controlSize(.large)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .help("只考词库中该等级的单词")
+        .accessibilityLabel("词库等级")
+        .accessibilityIdentifier("wordQuiz.lexiconLevel")
+    }
+
     private var pageCopy: WordQuizPageCopy {
         WordQuizPageCopy.make(for: space)
     }
@@ -405,6 +434,13 @@ struct WordQuizView: View {
         Binding(
             get: { store.rangeMode },
             set: { store.selectRangeMode($0) }
+        )
+    }
+
+    private var lexiconLevelBinding: Binding<VocabularyLevel?> {
+        Binding(
+            get: { store.lexiconLevel },
+            set: { store.selectLexiconLevel($0) }
         )
     }
 
@@ -531,6 +567,9 @@ private extension WordQuizDifficulty {
         space: .english,
         candidateSource: WordQuizCandidateSource(
             repository: PreviewWordBookRepository()
+        ),
+        lexiconCandidateSource: LexiconQuizCandidateSource(
+            lexiconRepository: PreviewLexiconRepository()
         ),
         settingsStore: .preview,
         soundPlayer: SilentWordQuizSoundPlayer(),

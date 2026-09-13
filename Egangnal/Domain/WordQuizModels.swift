@@ -5,9 +5,31 @@
 
 import Foundation
 
+/// 考公共词库时的筛选意图。
+///
+/// 只描述"考哪一批词"，不携带词条本身：候选集在启动时由查询层按这个描述加载。
+/// 这样 scope 可以保持 `Hashable, Sendable`，也不会因为候选集大小（四级 3,849 条）影响相等判断。
+enum LexiconQuizScope: Hashable, Sendable {
+    /// 全部等级。
+    case all
+    /// 某一个等级。
+    case level(VocabularyLevel)
+
+    /// 等级速测只考英语词库；日语词库本阶段不存在。
+    var query: LexiconQuery {
+        switch self {
+        case .all:
+            LexiconQuery()
+        case let .level(level):
+            LexiconQuery(level: level)
+        }
+    }
+}
+
 enum WordQuizScope: Hashable, Sendable {
     case allImported
     case date(VocabularyDocumentDate)
+    case lexicon(LexiconQuizScope)
 }
 
 enum WordQuizDifficulty: String, CaseIterable, Identifiable, Sendable {

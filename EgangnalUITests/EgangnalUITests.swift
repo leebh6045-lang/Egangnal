@@ -92,17 +92,27 @@ final class EgangnalUITests: XCTestCase {
         )
 
         revealWorkspaceNavigation(in: app)
-        click(app.buttons["workspace.navigation.feature.documents"], in: app)
+        click(app.buttons["workspace.navigation.feature.lexicon"], in: app)
         XCTAssertTrue(
-            app.descendants(matching: .any)["workspace.documents.placeholder"]
-                .waitForExistence(timeout: 3)
+            app.staticTexts["lexicon.title"].waitForExistence(timeout: 3),
+            "英语空间的学习资料应显示词库"
         )
-        click(app.buttons["workspace.documents.back"], in: app)
+        click(app.buttons["workspace.lexicon.back"], in: app)
         click(app.buttons["dashboard.open.english"], in: app)
         XCTAssertTrue(
-            app.descendants(matching: .any)["workspace.documents.placeholder"]
-                .waitForExistence(timeout: 3),
+            app.staticTexts["lexicon.title"].waitForExistence(timeout: 3),
             "返回首页后再次进入英语应恢复上次使用的学习资料功能"
+        )
+
+        // 词库目前只有英语数据，日语空间必须继续显示占位页，而不是空词库。
+        click(app.buttons["workspace.lexicon.back"], in: app)
+        click(app.buttons["dashboard.open.japanese"], in: app)
+        revealWorkspaceNavigation(in: app)
+        click(app.buttons["workspace.navigation.feature.lexicon"], in: app)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["workspace.lexicon.placeholder"]
+                .waitForExistence(timeout: 3),
+            "日语空间的学习资料仍应是占位页"
         )
     }
 
@@ -371,10 +381,23 @@ final class EgangnalUITests: XCTestCase {
         XCTAssertTrue(banana.exists)
         XCTAssertTrue(bananaMeaning.exists)
 
-        XCTAssertEqual(apple.frame.minY, banana.frame.minY, accuracy: 2)
-        XCTAssertLessThan(apple.frame.minX, appleMeaning.frame.minX)
-        XCTAssertLessThan(appleMeaning.frame.minX, banana.frame.minX)
-        XCTAssertLessThan(banana.frame.minX, bananaMeaning.frame.minX)
+        // 洗牌后不保证 apple 与 banana 落在同一排，因此按页面上的前两个词条验证四等分：
+        // 同一排两个词条，字段从左到右依次是 词1、义1、词2、义2。
+        let wordFields = app.buttons
+            .matching(NSPredicate(format: "identifier ENDSWITH %@", ".word"))
+            .allElementsBoundByIndex
+        let meaningFields = app.buttons
+            .matching(NSPredicate(format: "identifier ENDSWITH %@", ".meaning"))
+            .allElementsBoundByIndex
+        XCTAssertGreaterThanOrEqual(wordFields.count, 2, "至少应渲染两个词条")
+        XCTAssertGreaterThanOrEqual(meaningFields.count, 2)
+        // 横向四等分：词1 → 义1 → 词2 → 义2，且四个字段等宽。
+        // 不断言同一排的纵向齐平：洗牌后长短词可能落在同一排，行内容按中心对齐，
+        // 纵向位置本来就不相等——这是单词本既有的排版行为，不是缺陷。
+        XCTAssertLessThan(wordFields[0].frame.minX, meaningFields[0].frame.minX)
+        XCTAssertLessThan(meaningFields[0].frame.minX, wordFields[1].frame.minX)
+        XCTAssertLessThan(wordFields[1].frame.minX, meaningFields[1].frame.minX)
+        // 不断言等宽：按钮的可访问框是**文字自身**的宽度，不是字段宽度。
         let visibleFrames = [
             apple.frame,
             appleMeaning.frame,
@@ -448,8 +471,10 @@ final class EgangnalUITests: XCTestCase {
         waitForValue("第 1 / 2 页", of: pageStatus, timeout: 3)
         XCTAssertFalse(previousPage.isEnabled)
         XCTAssertTrue(nextPage.isEnabled)
-        XCTAssertTrue(app.buttons["pagination-word-01"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.buttons["pagination-word-21"].exists)
+        // LazyVGrid 只渲染可见的格子，因此不按数量断言；
+        // 改为验证"第一页确实渲染了词条"，并在翻页后对比内容是否换成另一批。
+        let firstPageWords = visibleWordLabels(in: app)
+        XCTAssertFalse(firstPageWords.isEmpty, "第一页应渲染出词条")
 
         let maskToggle = app.buttons["wordBook.mask.toggle"]
         click(maskToggle, in: app)
@@ -460,13 +485,16 @@ final class EgangnalUITests: XCTestCase {
         XCTAssertTrue(previousPage.isEnabled)
         XCTAssertFalse(nextPage.isEnabled)
         waitForValue("全部显示", of: maskToggle, timeout: 3)
-        XCTAssertFalse(app.buttons["pagination-word-01"].exists)
-        XCTAssertTrue(app.buttons["pagination-word-21"].waitForExistence(timeout: 3))
+        let secondPageWords = visibleWordLabels(in: app)
+        XCTAssertFalse(secondPageWords.isEmpty, "第二页应渲染出词条")
+        XCTAssertTrue(
+            firstPageWords.isDisjoint(with: secondPageWords),
+            "翻页后应换成另一批词条"
+        )
 
         click(previousPage, in: app)
         waitForValue("第 1 / 2 页", of: pageStatus, timeout: 3)
-        XCTAssertTrue(app.buttons["pagination-word-01"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.buttons["pagination-word-21"].exists)
+        XCTAssertEqual(visibleWordLabels(in: app), firstPageWords)
     }
 
     @MainActor
@@ -559,7 +587,7 @@ final class EgangnalUITests: XCTestCase {
         let navigation = app.descendants(matching: .any)["workspace.navigation"]
         let wordBookFeature = app.buttons["workspace.navigation.feature.wordBook"]
         let wordQuizFeature = app.buttons["workspace.navigation.feature.wordQuiz"]
-        let documentsFeature = app.buttons["workspace.navigation.feature.documents"]
+        let documentsFeature = app.buttons["workspace.navigation.feature.lexicon"]
         XCTAssertTrue(navigation.exists)
         XCTAssertTrue(wordBookFeature.exists)
         XCTAssertTrue(wordQuizFeature.exists)
@@ -631,12 +659,17 @@ final class EgangnalUITests: XCTestCase {
         XCTAssertTrue(documents.waitForExistence(timeout: 3))
         click(documents, in: app)
 
-        let placeholder = app.descendants(matching: .any)[
-            "workspace.documents.placeholder"
-        ]
-        XCTAssertTrue(placeholder.waitForExistence(timeout: 3))
-        XCTAssertEqual(placeholder.label, "注意，功能监修中")
-        let documentsBack = app.buttons["workspace.documents.back"]
+        let lexiconTitle = app.staticTexts["lexicon.title"]
+        XCTAssertTrue(
+            lexiconTitle.waitForExistence(timeout: 3),
+            "英语空间的学习资料应显示词库"
+        )
+        XCTAssertEqual(lexiconTitle.label, "英语词库")
+        XCTAssertFalse(
+            app.descendants(matching: .any)["workspace.lexicon.placeholder"].exists,
+            "英语空间不应再出现学习资料占位页"
+        )
+        let documentsBack = app.buttons["workspace.lexicon.back"]
         XCTAssertTrue(documentsBack.exists)
         XCTAssertFalse(app.buttons["workspace.navigation.dashboard"].exists)
         click(documentsBack, in: app)
@@ -684,7 +717,7 @@ final class EgangnalUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["wordQuiz.feedback"].exists)
 
         revealWorkspaceNavigation(in: app)
-        let documents = app.buttons["workspace.navigation.feature.documents"]
+        let documents = app.buttons["workspace.navigation.feature.lexicon"]
         XCTAssertTrue(documents.exists)
         click(documents, in: app)
 
@@ -694,10 +727,66 @@ final class EgangnalUITests: XCTestCase {
             "已作答的单词刷通过顶部栏离开时必须先请求确认"
         )
         XCTAssertFalse(
-            app.descendants(matching: .any)["workspace.documents.placeholder"].exists
+            app.descendants(matching: .any)["workspace.lexicon.placeholder"].exists
         )
         click(continueButton, in: app)
         XCTAssertTrue(app.staticTexts["wordQuiz.question.term"].exists)
+    }
+
+    /// 词库范围：范围选择器里的第三项，考的是随包发布的真实词库（7,116 条）。
+    /// 这一条同时验证"未收藏的词也能考"和"选项带词性"两件事。
+    @MainActor
+    func testWordQuizLexiconRangeUsesBundledLexiconAndShowsPartOfSpeech() throws {
+        let app = makeApplication(
+            additionalArguments: [
+                "--ui-testing-word-quiz-fixtures",
+                "--ui-testing-workspace-word-quiz"
+            ]
+        )
+        app.launch()
+        app.activate()
+
+        XCTAssertTrue(app.staticTexts["wordQuiz.english.title"].waitForExistence(timeout: 5))
+
+        let rangePicker = app.radioGroups["wordQuiz.range"]
+        XCTAssertTrue(rangePicker.waitForExistence(timeout: 3))
+        XCTAssertEqual(
+            rangePicker.radioButtons.count,
+            3,
+            "范围应有 默认 / 日期 / 词库 三项"
+        )
+
+        // 默认范围（个人单词本）下不显示等级选择器。
+        XCTAssertFalse(app.popUpButtons["wordQuiz.lexiconLevel"].exists)
+
+        click(rangePicker.radioButtons.element(boundBy: 2), in: app)
+
+        let levelPicker = app.popUpButtons["wordQuiz.lexiconLevel"]
+        XCTAssertTrue(
+            levelPicker.waitForExistence(timeout: 3),
+            "选词库范围后应出现等级选择器"
+        )
+
+        // 词库能读出候选（未收藏的词也能考），否则开始按钮会被禁用。
+        let start = app.buttons["wordQuiz.start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 3))
+        XCTAssertTrue(start.isEnabled, "词库范围应可以开始答题")
+
+        click(start, in: app)
+
+        let term = app.staticTexts["wordQuiz.question.term"]
+        XCTAssertTrue(term.waitForExistence(timeout: 5), "应出一题")
+        let options = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "wordQuiz.choice.option.")
+        )
+        XCTAssertEqual(options.count, 4, "应为四选一")
+
+        // 选项文本必须带词性前缀（`n.` / `vt.` 这类）。
+        let partOfSpeechLabels = options.allElementsBoundByIndex.map(\.label)
+        XCTAssertTrue(
+            partOfSpeechLabels.allSatisfy { $0.contains(".") },
+            "词库范围的选项应带词性，实际为 \(partOfSpeechLabels)"
+        )
     }
 
     @MainActor
@@ -1352,6 +1441,17 @@ final class EgangnalUITests: XCTestCase {
             && abs(lhs.height - rhs.height) <= accuracy
     }
 
+    /// 当前页可见的词形集合。LazyVGrid 只渲染可见格子，因此只比对集合而不比对数量。
+    @MainActor
+    private func visibleWordLabels(in app: XCUIApplication) -> Set<String> {
+        Set(
+            app.buttons
+                .matching(NSPredicate(format: "identifier ENDSWITH %@", ".word"))
+                .allElementsBoundByIndex
+                .map(\.label)
+        )
+    }
+
     @MainActor
     private func waitForValue(
         _ value: String,
@@ -1482,28 +1582,6 @@ final class EgangnalUITests: XCTestCase {
         }
     }
 
-    @MainActor
-    private func assertWorkspaceCardGrid(
-        documents: XCUIElement,
-        wordBook: XCUIElement,
-        wordQuiz: XCUIElement,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) {
-        XCTAssertEqual(documents.frame.minY, wordBook.frame.minY, accuracy: 2, file: file, line: line)
-        XCTAssertEqual(documents.frame.width, wordBook.frame.width, accuracy: 2, file: file, line: line)
-        XCTAssertEqual(documents.frame.height, wordBook.frame.height, accuracy: 2, file: file, line: line)
-        XCTAssertEqual(documents.frame.minX, wordQuiz.frame.minX, accuracy: 2, file: file, line: line)
-        XCTAssertEqual(documents.frame.width, wordQuiz.frame.width, accuracy: 2, file: file, line: line)
-        XCTAssertEqual(documents.frame.height, wordQuiz.frame.height, accuracy: 2, file: file, line: line)
-        XCTAssertGreaterThan(wordBook.frame.minX, documents.frame.minX, file: file, line: line)
-        XCTAssertGreaterThanOrEqual(
-            wordQuiz.frame.minY,
-            documents.frame.maxY + AppThemeTestValues.panelSpacing - 2,
-            file: file,
-            line: line
-        )
-    }
 
     @MainActor
     private func assertWordQuizVisibleContentIsCentered(

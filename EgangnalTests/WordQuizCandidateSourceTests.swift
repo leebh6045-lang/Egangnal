@@ -15,13 +15,13 @@ struct WordQuizCandidateSourceTests {
         let pureManual = makeEntry(
             term: "manual",
             meaning: "手动",
-            isManuallyCreated: true,
+            source: .manual,
             dates: []
         )
         let importedManual = makeEntry(
             term: "later imported",
             meaning: "后来导入",
-            isManuallyCreated: true,
+            source: .manual,
             dates: [firstDate]
         )
         let imported = makeEntry(
@@ -57,7 +57,7 @@ struct WordQuizCandidateSourceTests {
                 .japanese: [
                     makeEntry(term: "一", meaning: "一", dates: [middle, latest]),
                     makeEntry(term: "二", meaning: "二", dates: [earliest, middle]),
-                    makeEntry(term: "三", meaning: "三", isManuallyCreated: true, dates: [])
+                    makeEntry(term: "三", meaning: "三", source: .manual, dates: [])
                 ]
             ]
         )
@@ -76,7 +76,7 @@ struct WordQuizCandidateSourceTests {
         let unexpectedManual = makeEntry(
             term: "manual",
             meaning: "手动",
-            isManuallyCreated: true,
+            source: .manual,
             dates: []
         )
         let otherDate = try #require(VocabularyDocumentDate(year: 2026, month: 8, day: 16))
@@ -125,14 +125,14 @@ struct WordQuizCandidateSourceTests {
         id: UUID = UUID(),
         term: String,
         meaning: String,
-        isManuallyCreated: Bool = false,
+        source: WordEntrySource = .markdownImport,
         dates: [VocabularyDocumentDate]
     ) -> WordBookEntrySnapshot {
         WordBookEntrySnapshot(
             id: id,
             term: term,
             meaning: meaning,
-            isManuallyCreated: isManuallyCreated,
+            source: source,
             occurrenceDates: dates
         )
     }
@@ -191,6 +191,28 @@ private final class WordQuizCandidateSourceRepository: WordBookRepository {
     }
 
     func addManualEntry(term: String, meaning: String, in space: LanguageSpace) throws -> UUID {
+        throw WordQuizCandidateSourceTestError.expectedFailure
+    }
+
+    func collectFromLexicon(
+        term: String,
+        meaning: String,
+        collectedAt: Date,
+        in space: LanguageSpace
+    ) throws -> WordBookCollectionOutcome {
+        throw WordQuizCandidateSourceTestError.expectedFailure
+    }
+
+    func uncollectFromLexicon(
+        term: String,
+        in space: LanguageSpace
+    ) throws -> WordBookCollectionOutcome {
+        throw WordQuizCandidateSourceTestError.expectedFailure
+    }
+
+    func lexiconCollectionInfo(
+        in space: LanguageSpace
+    ) throws -> [String: LexiconCollectionInfo] {
         throw WordQuizCandidateSourceTestError.expectedFailure
     }
 

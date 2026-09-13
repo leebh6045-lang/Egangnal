@@ -188,6 +188,18 @@ enum WordQuizEngine {
         )
     }
 
+    /// 选项在界面上实际显示的文本，也是"两个选项看起来是否一样"的唯一判定依据。
+    ///
+    /// 目前词库收藏写入单词本的释义已经是限长 12 字的短释义（`LexiconGlossFormatter`），
+    /// 因此这里不改变文本，只折叠空白。**这条等式的依赖关系必须保持**：
+    /// 若将来把完整释义直接传进引擎，必须在这里接上词库的派生规则，
+    /// 否则界面按原样渲染、引擎按派生结果判重，两边会各说各话。
+    static func displayText(of meaning: String) -> String {
+        meaning
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
     private static func makeMeaningQuestion<R: RandomNumberGenerator>(
         for target: WordQuizCandidate,
         selectedCandidates: [WordQuizCandidate],
@@ -196,9 +208,14 @@ enum WordQuizEngine {
     ) throws -> WordQuizQuestion {
         let correctMeaning = normalizedMeaning(target.meaning)
         var usedMeanings = Set([correctMeaning])
+        // 显示文本单独记一份：完整释义不同、显示文本却相同的词在词库里真实存在
+        // （实测 93 组、189 条词，如 `aeroplane` 与 `airplane` 释义逐字相同，
+        // `absolutely` 与 `altogether` 都被压成 `adv. 完全地…`），只靠释义去重拦不住。
+        var usedDisplayTexts = Set([displayText(of: target.meaning)])
         var distractors: [WordQuizCandidate] = []
 
         // 优先使用本轮词条；不足时再从当前语言空间的完整候选池补齐。
+        // 干扰项每次挑两个条件：释义不能重复（usedMeanings），显示文本也不能撞车（usedDisplayTexts）。
         var preferred = uniqueMeaningCandidates(
             selectedCandidates,
             excluding: target.id,
@@ -206,10 +223,12 @@ enum WordQuizEngine {
         )
         preferred.shuffle(using: &randomGenerator)
         for candidate in preferred where distractors.count < choiceOptionCount - 1 {
-            let meaning = normalizedMeaning(candidate.meaning)
-            if usedMeanings.insert(meaning).inserted {
-                distractors.append(candidate)
-            }
+            guard acceptDistractor(
+                candidate,
+                usedMeanings: &usedMeanings,
+                usedDisplayTexts: &usedDisplayTexts
+            ) else { continue }
+            distractors.append(candidate)
         }
 
         var fallback = uniqueMeaningCandidates(
@@ -219,12 +238,15 @@ enum WordQuizEngine {
         )
         fallback.shuffle(using: &randomGenerator)
         for candidate in fallback where distractors.count < choiceOptionCount - 1 {
-            let meaning = normalizedMeaning(candidate.meaning)
-            if usedMeanings.insert(meaning).inserted {
-                distractors.append(candidate)
-            }
+            guard acceptDistractor(
+                candidate,
+                usedMeanings: &usedMeanings,
+                usedDisplayTexts: &usedDisplayTexts
+            ) else { continue }
+            distractors.append(candidate)
         }
 
+        // 宁可明确报错，也不静默少给一个选项——四选一是产品契约。
         guard distractors.count == choiceOptionCount - 1 else {
             throw WordQuizEngineError.insufficientDistinctMeanings(
                 required: choiceOptionCount,
@@ -319,6 +341,28 @@ enum WordQuizEngine {
             candidatesByID[candidate.id] = candidate
         }
         return candidatesByID.values.sorted { $0.id.uuidString < $1.id.uuidString }
+    }
+
+    /// 判断一个候选干扰项是否可用，可用时把它的释义与显示文本一并登记。
+    ///
+    /// 返回 `false` 表示这条候选不能用：要么释义重复，要么显示文本与已选中的选项撞车
+    /// （近义词、同根词，或将来完整释义被截断成同一段文字）。两者都只需换一条候选。
+    private static func acceptDistractor(
+        _ candidate: WordQuizCandidate,
+        usedMeanings: inout Set<String>,
+        usedDisplayTexts: inout Set<String>
+    ) -> Bool {
+        let meaning = normalizedMeaning(candidate.meaning)
+        let displayText = displayText(of: candidate.meaning)
+        // 两道闸门都通过才登记：先登记的写法会让被拒候选的释义占掉名额，
+        // 使报错信息里的"可用释义数"虚高。
+        guard !usedMeanings.contains(meaning),
+              !usedDisplayTexts.contains(displayText) else {
+            return false
+        }
+        usedMeanings.insert(meaning)
+        usedDisplayTexts.insert(displayText)
+        return true
     }
 
     private static func uniqueMeaningCandidates(
