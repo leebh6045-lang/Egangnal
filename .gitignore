@@ -21,3 +21,6 @@ dist/
 
 # 词库构建输入：原始 ECDICT 数据体积大且可重新取得，不进入仓库
 .lexicon-source/
+
+# Sparkle 生成物：正式 appcast 只提交 updates/appcast.xml（GitHub Pages 源）
+SparkleReleases/appcast.xml
