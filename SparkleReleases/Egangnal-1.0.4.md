@@ -1,15 +1,4 @@
-<?xml version="1.0" standalone="yes"?>
-<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
-    <channel>
-        <title>Egangnal</title>
-        <item>
-            <title>1.0.4</title>
-            <pubDate>Sun, 13 Sep 2026 15:28:33 +0800</pubDate>
-            <sparkle:version>5</sparkle:version>
-            <sparkle:shortVersionString>1.0.4</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Egangnal 1.0.4
+# Egangnal 1.0.4
 
 这是一次大版本更新，新增内置词库与单词刷联动。
 
@@ -32,8 +21,3 @@
 - 考词库时选项会带词性（如 `n. 苹果, 家伙…`），与词库、单词本里显示的形态一致。
 - 收藏的词本来就会进入默认抽题范围，这次用测试锁定并修复了一个缺陷：
   同一题内不再出现两个看起来完全一样的选项。
-]]></description>
-            <enclosure url="https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.4/Egangnal-1.0.4.zip" length="5718862" type="application/octet-stream" sparkle:edSignature="ElODlI0KKza5lhje9EjRx8xfOr93Ccha1g2x8HP1gKfhtRyPZAfE4AYRhLSy0GD0OYXHaOP0r3uz1ZMTM80qDg=="/>
-        </item>
-    </channel>
-</rss>
