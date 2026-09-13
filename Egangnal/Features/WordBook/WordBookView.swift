@@ -13,9 +13,12 @@ struct WordBookView: View {
     let space: LanguageSpace
     let repository: any WordBookRepository
     let settingsStore: AppSettingsStore
+    let shuffle: ShuffleSeedController
     let openWorkspace: () -> Void
 
     @State private var entries: [WordBookEntrySnapshot] = []
+    /// 默认分页的洗牌种子。按日期浏览是一种分组视图，不参与洗牌。
+    @State private var shuffleSeed = 0
     @State private var browseMode: WordBookBrowseMode = .all
     @State private var currentPage = 0
     @State private var currentDatePage = 0
@@ -37,11 +40,13 @@ struct WordBookView: View {
         space: LanguageSpace,
         repository: any WordBookRepository,
         settingsStore: AppSettingsStore,
+        shuffle: ShuffleSeedController,
         openWorkspace: @escaping () -> Void
     ) {
         self.space = space
         self.repository = repository
         self.settingsStore = settingsStore
+        self.shuffle = shuffle
         self.openWorkspace = openWorkspace
     }
 
@@ -195,6 +200,15 @@ struct WordBookView: View {
                             .accessibilityIdentifier("wordBook.edit.toggle")
                         }
 
+                        if browseMode == .all {
+                            Button("换一批", systemImage: "arrow.triangle.2.circlepath") {
+                                reshuffle()
+                            }
+                            .buttonStyle(.bordered)
+                            .help("换一批单词")
+                            .accessibilityIdentifier("wordBook.reshuffle")
+                        }
+
                         Spacer(minLength: 12)
 
                         modePicker
@@ -282,11 +296,11 @@ struct WordBookView: View {
             case .manual:
                 entryPanel(
                     title: "未归档单词",
-                    subtitle: "手动新增 \(manualEntries.count) 个",
+                    subtitle: "手动新增或词库收藏 \(manualEntries.count) 个",
                     displayedEntries: manualEntries,
                     emphasizesFrequency: false,
                     emptyTitle: "没有未归档单词",
-                    emptyMessage: "手动新增的单词会显示在这里。"
+                    emptyMessage: "手动新增或从词库收藏的单词会显示在这里。"
                 )
             }
         } else {
@@ -472,12 +486,24 @@ struct WordBookView: View {
         .padding(4)
     }
 
+    /// 默认分页使用的顺序：洗牌后每次进入换一批，避免总是从同一批词开始。
+    private var browsableEntries: [WordBookEntrySnapshot] {
+        WordBookPaging.shuffled(entries, seed: shuffleSeed)
+    }
+
     private var pageCount: Int {
-        WordBookPaging.pageCount(itemCount: entries.count)
+        WordBookPaging.pageCount(itemCount: browsableEntries.count)
     }
 
     private var pagedEntries: [WordBookEntrySnapshot] {
-        WordBookPaging.items(in: entries, page: currentPage)
+        WordBookPaging.items(in: browsableEntries, page: currentPage)
+    }
+
+    private func reshuffle() {
+        shuffle.reshuffle()
+        shuffleSeed = shuffle.seed
+        currentPage = 0
+        resetMasking()
     }
 
     private func cycleMaskMode() {
@@ -549,6 +575,7 @@ struct WordBookView: View {
     private func reloadEntries() {
         resetMasking()
         do {
+            shuffleSeed = shuffle.seedForEntry()
             entries = try repository.entries(in: space)
             currentPage = WordBookPaging.clampedPage(currentPage, itemCount: entries.count)
             currentDatePage = min(max(currentDatePage, 0), max(datePages.count - 1, 0))
@@ -751,6 +778,7 @@ private extension WordBookMaskMode {
         space: .english,
         repository: PreviewWordBookRepository(),
         settingsStore: .preview,
+        shuffle: ShuffleSeedController(),
         openWorkspace: {}
     )
     .environment(\.appPalette, AppAppearance.dark.palette)

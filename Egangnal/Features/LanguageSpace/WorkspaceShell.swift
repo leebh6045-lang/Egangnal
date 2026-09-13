@@ -416,7 +416,7 @@ extension Notification.Name {
     )
 }
 
-struct WorkspaceDocumentsPlaceholder: View {
+struct WorkspaceLexiconPlaceholder: View {
     @Environment(\.appPalette) private var palette
 
     let openDashboard: () -> Void
@@ -436,7 +436,7 @@ struct WorkspaceDocumentsPlaceholder: View {
             .foregroundStyle(palette.watermark)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("注意，功能监修中")
-            .accessibilityIdentifier("workspace.documents.placeholder")
+            .accessibilityIdentifier("workspace.lexicon.placeholder")
 
             Button(action: openDashboard) {
                 Image(systemName: "chevron.left")
@@ -448,7 +448,7 @@ struct WorkspaceDocumentsPlaceholder: View {
             .keyboardShortcut(.escape, modifiers: [])
             .help("返回总览")
             .accessibilityLabel("返回总览")
-            .accessibilityIdentifier("workspace.documents.back")
+            .accessibilityIdentifier("workspace.lexicon.back")
             .padding(AppTheme.contentPadding)
         }
     }

@@ -29,7 +29,7 @@ struct AppCommands: Commands {
             .disabled(!isWorkspace)
 
             Button("学习资料") {
-                requestFeature(.documents)
+                requestFeature(.lexicon)
             }
             .keyboardShortcut("3", modifiers: .command)
             .disabled(!isWorkspace)

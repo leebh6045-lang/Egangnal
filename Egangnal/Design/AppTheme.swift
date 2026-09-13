@@ -46,6 +46,28 @@ enum AppTheme {
     static let wordQuizSuccessRingLineWidth: CGFloat = 2
     static let wordQuizFeedbackHeight: CGFloat = 54
     static let wordQuizIdleWatermarkFontSize: CGFloat = 54
+    // 词库：沿用单词本的双栏词块语言，但字号更小、多了检索区与悬停浮层。
+    static let lexiconEntryTermFontSize: CGFloat = 24
+    static let lexiconEntryGlossFontSize: CGFloat = 20
+    static let lexiconEntryMinHeight: CGFloat = 64
+    static let lexiconEntryFieldSpacing: CGFloat = 8
+    static let lexiconGridRowSpacing: CGFloat = 28
+    static let lexiconFilterFontSize: CGFloat = 16
+    /// 检索区收窄到居中的一条带，避免筛选与搜索被拉开到窗口两端。
+    static let lexiconFilterBandMaxWidth: CGFloat = 720
+    static let lexiconSeparatorThickness: CGFloat = 2
+    static let lexiconFilterUnderlineHeight: CGFloat = 2
+    static let lexiconResultCountFontSize: CGFloat = 14
+    static let lexiconPaginationFontSize: CGFloat = 14
+    static let lexiconSearchFontSize: CGFloat = 16
+    /// 浮层延时。太短会随处误触发，实测 0.6 秒更稳。
+    static let lexiconTooltipDelay: Duration = .milliseconds(600)
+    /// 收藏按钮固定占位，显隐不推动词条。
+    static let lexiconCollectButtonWidth: CGFloat = 26
+    static let lexiconTooltipMinWidth: CGFloat = 200
+    static let lexiconTooltipMaxWidth: CGFloat = 360
+    static let lexiconTooltipFadeDuration: TimeInterval = 0.28
+    static let lexiconTooltipEdgeInset: CGFloat = 12
     static let toggleSize: CGFloat = 36
     static let pageFadeDuration: TimeInterval = 0.22
     static let rippleDuration: TimeInterval = 0.72
@@ -70,6 +92,8 @@ struct AppPalette {
     let calendarAccent: Color
     let calendarCompleted: Color
     let calendarVisited: Color
+    /// “已收录到单词本”的标记色。浅色主题必须压深，否则在白色面板上看不清。
+    let collectedAccent: Color
     let accentForeground: Color
     let guideBackground: Color
     let guideText: Color
@@ -113,6 +137,8 @@ extension AppAppearance {
                 // 完成学习日使用金黄色，区别于访问但未达标的灰色。
                 calendarCompleted: Color(red: 0.925, green: 0.682, blue: 0.118),
                 calendarVisited: Color(red: 0.694, green: 0.729, blue: 0.776),
+                // 浅色背景上必须用深金，浅黄会失去对比度。
+                collectedAccent: Color(red: 0.635, green: 0.455, blue: 0.024),
                 accentForeground: .white,
                 guideBackground: Color(red: 1.000, green: 0.980, blue: 0.875),
                 guideText: Color(red: 0.075, green: 0.075, blue: 0.067),
@@ -142,6 +168,8 @@ extension AppAppearance {
                 // 深色主题提高饱和度，让金黄色在深色背景上更清晰。
                 calendarCompleted: Color(red: 1.000, green: 0.710, blue: 0.157),
                 calendarVisited: Color(red: 0.357, green: 0.431, blue: 0.529),
+                // 深色背景上用浅黄。
+                collectedAccent: Color(red: 0.976, green: 0.827, blue: 0.365),
                 accentForeground: Color(red: 0.035, green: 0.051, blue: 0.071),
                 guideBackground: Color(red: 0.098, green: 0.141, blue: 0.200),
                 guideText: Color(red: 0.957, green: 0.969, blue: 0.984),

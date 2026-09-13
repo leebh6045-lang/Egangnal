@@ -6,8 +6,8 @@
 /// 语言工作区内可切换的功能，声明顺序同时决定顶部栏顺序。
 enum WorkspaceFeature: String, CaseIterable, Identifiable, Codable, Hashable, Sendable {
     case wordBook
+    case lexicon
     case wordQuiz
-    case documents
 
     var id: Self { self }
 
@@ -17,8 +17,8 @@ enum WorkspaceFeature: String, CaseIterable, Identifiable, Codable, Hashable, Se
             "单词本"
         case .wordQuiz:
             "单词刷"
-        case .documents:
-            "学习资料"
+        case .lexicon:
+            "词库"
         }
     }
 }

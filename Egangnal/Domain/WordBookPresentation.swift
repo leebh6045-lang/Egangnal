@@ -133,6 +133,39 @@ enum WordBookPaging {
         return Array(entries[start..<end])
     }
 
+    /// 按种子打乱词条顺序，用于「换一批」。
+    ///
+    /// 用 FNV-1a 从词条 UUID 与种子派生排序键：同一批词在翻页之间顺序稳定，
+    /// 换种子时整批变化。单词本数据量小，直接在内存里排序即可。
+    static func shuffled(
+        _ entries: [WordBookEntrySnapshot],
+        seed: Int
+    ) -> [WordBookEntrySnapshot] {
+        guard !entries.isEmpty else { return [] }
+        return entries.sorted { lhs, rhs in
+            shuffleKey(lhs.id, seed: seed) < shuffleKey(rhs.id, seed: seed)
+        }
+    }
+
+    private static func shuffleKey(_ id: UUID, seed: Int) -> UInt64 {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        // 种子必须先经过完整的一轮散列再参与排序。
+        // 若只写 `hash ^ seed`，XOR 只翻转种子里为 1 的位，高位几乎不变，
+        // 结果就是"换了种子但顺序几乎没变"，等于没洗牌。
+        var seedValue = UInt64(bitPattern: Int64(seed))
+        withUnsafeBytes(of: &seedValue) { buffer in
+            for byte in buffer {
+                hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211
+            }
+        }
+        withUnsafeBytes(of: id.uuid) { buffer in
+            for byte in buffer {
+                hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211
+            }
+        }
+        return hash
+    }
+
     static func dates(in entries: [WordBookEntrySnapshot]) -> [VocabularyDocumentDate] {
         Set(entries.flatMap(\.occurrenceDates)).sorted(by: >)
     }

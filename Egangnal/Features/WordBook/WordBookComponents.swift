@@ -21,7 +21,7 @@ struct WordBookEntryRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            WordBookEntryFieldsLayout(spacing: AppTheme.wordBookFieldSpacing) {
+            EqualFieldsLayout(spacing: AppTheme.wordBookFieldSpacing) {
                 maskedTextButton(
                     text: entry.term,
                     isVisible: isWordVisible,
@@ -121,57 +121,6 @@ struct WordBookEntryRow: View {
         emphasizesFrequency && entry.isHighFrequency
             ? "\(entry.term)，高频词"
             : entry.term
-    }
-}
-
-private struct WordBookEntryFieldsLayout: Layout {
-    let spacing: CGFloat
-
-    func sizeThatFits(
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) -> CGSize {
-        guard !subviews.isEmpty else { return .zero }
-
-        let idealWidth = subviews
-            .map { $0.sizeThatFits(.unspecified).width }
-            .reduce(0, +) + spacing * CGFloat(max(subviews.count - 1, 0))
-        let resolvedWidth = proposal.width ?? idealWidth
-        let fieldWidth = widthPerField(totalWidth: resolvedWidth, count: subviews.count)
-        let fieldProposal = ProposedViewSize(width: fieldWidth, height: nil)
-        let height = subviews
-            .map { $0.sizeThatFits(fieldProposal).height }
-            .max() ?? 0
-
-        return CGSize(width: resolvedWidth, height: height)
-    }
-
-    func placeSubviews(
-        in bounds: CGRect,
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) {
-        guard !subviews.isEmpty else { return }
-
-        let fieldWidth = widthPerField(totalWidth: bounds.width, count: subviews.count)
-        let fieldProposal = ProposedViewSize(width: fieldWidth, height: nil)
-
-        // 每个字段获得相同宽度，长文本只能在自己的区域内换行。
-        for (index, subview) in subviews.enumerated() {
-            let x = bounds.minX + CGFloat(index) * (fieldWidth + spacing)
-            subview.place(
-                at: CGPoint(x: x, y: bounds.minY),
-                anchor: .topLeading,
-                proposal: fieldProposal
-            )
-        }
-    }
-
-    private func widthPerField(totalWidth: CGFloat, count: Int) -> CGFloat {
-        let totalSpacing = spacing * CGFloat(max(count - 1, 0))
-        return max((totalWidth - totalSpacing) / CGFloat(max(count, 1)), 0)
     }
 }
 

@@ -134,15 +134,45 @@ struct EgangnalTests {
         #expect(darkPalette.japaneseAccent == darkPalette.englishAccent)
     }
 
+    @Test func wordBookShuffleIsStableForOneSeedAndChangesWithAnother() {
+        let entries = (1...40).map { makeShuffleEntry(index: $0) }
+
+        let first = WordBookPaging.shuffled(entries, seed: 4_242)
+        let repeated = WordBookPaging.shuffled(entries, seed: 4_242)
+        let other = WordBookPaging.shuffled(entries, seed: 9_999)
+
+        #expect(first.map(\.id) == repeated.map(\.id), "同一种子必须得到同一批顺序")
+        #expect(first.map(\.id) != other.map(\.id), "换种子必须换一批顺序")
+    }
+
+    /// 洗牌只改顺序，不能丢词或重复。
+    @Test func wordBookShuffleKeepsEveryEntryExactlyOnce() {
+        let entries = (1...40).map { makeShuffleEntry(index: $0) }
+
+        let shuffled = WordBookPaging.shuffled(entries, seed: 20_260_911)
+
+        #expect(shuffled.count == entries.count)
+        #expect(Set(shuffled.map(\.id)) == Set(entries.map(\.id)))
+        // 分页之后仍然不重不漏。
+        let firstPage = WordBookPaging.items(in: shuffled, page: 0)
+        let secondPage = WordBookPaging.items(in: shuffled, page: 1)
+        #expect(Set(firstPage.map(\.id)).isDisjoint(with: Set(secondPage.map(\.id))))
+    }
+
+    @Test func wordBookShuffleHandlesEmptyInput() {
+        #expect(WordBookPaging.shuffled([], seed: 1).isEmpty)
+        #expect(WordBookPaging.shuffled([makeShuffleEntry(index: 1)], seed: 1).count == 1)
+    }
+
     @Test func workspaceFeaturesHaveStableNavigationOrderAndTitles() {
-        #expect(WorkspaceFeature.allCases == [.wordBook, .wordQuiz, .documents])
+        #expect(WorkspaceFeature.allCases == [.wordBook, .lexicon, .wordQuiz])
         #expect(
             WorkspaceFeature.allCases.map(\.rawValue)
-                == ["wordBook", "wordQuiz", "documents"]
+                == ["wordBook", "lexicon", "wordQuiz"]
         )
         #expect(WorkspaceFeature.wordBook.title == "单词本")
         #expect(WorkspaceFeature.wordQuiz.title == "单词刷")
-        #expect(WorkspaceFeature.documents.title == "学习资料")
+        #expect(WorkspaceFeature.lexicon.title == "词库")
     }
 
     @Test @MainActor func workspaceNavigationDefaultsBothLanguagesToWordBook() {
@@ -159,11 +189,11 @@ struct EgangnalTests {
         let store = WorkspaceNavigationStore(preferences: preferences)
 
         store.setLastFeature(.wordQuiz, for: .japanese)
-        store.setLastFeature(.documents, for: .english)
+        store.setLastFeature(.lexicon, for: .english)
 
         let restored = WorkspaceNavigationStore(preferences: preferences)
         #expect(restored.lastFeature(for: .japanese) == .wordQuiz)
-        #expect(restored.lastFeature(for: .english) == .documents)
+        #expect(restored.lastFeature(for: .english) == .lexicon)
         #expect(
             preferences.values[
                 WorkspaceNavigationStore.StorageKey.lastFeature(for: .japanese)
@@ -172,7 +202,7 @@ struct EgangnalTests {
         #expect(
             preferences.values[
                 WorkspaceNavigationStore.StorageKey.lastFeature(for: .english)
-            ] == WorkspaceFeature.documents.rawValue
+            ] == WorkspaceFeature.lexicon.rawValue
         )
     }
 
@@ -398,16 +428,16 @@ struct EgangnalTests {
             .settings,
             .workspace(.japanese, .wordBook),
             .workspace(.japanese, .wordQuiz),
-            .workspace(.japanese, .documents),
+            .workspace(.japanese, .lexicon),
             .workspace(.english, .wordBook),
             .workspace(.english, .wordQuiz),
-            .workspace(.english, .documents)
+            .workspace(.english, .lexicon)
         ]
 
         #expect(Set(routes.map(\.accessibilityIdentifier)).count == routes.count)
         #expect(AppRoute.dashboard.learningSpace == nil)
         #expect(AppRoute.settings.learningSpace == nil)
-        #expect(AppRoute.workspace(.english, .documents).learningSpace == .english)
+        #expect(AppRoute.workspace(.english, .lexicon).learningSpace == .english)
         #expect(AppRoute.workspace(.japanese, .wordQuiz).isWordQuiz)
         #expect(!AppRoute.workspace(.japanese, .wordBook).isWordQuiz)
     }
@@ -420,8 +450,8 @@ struct EgangnalTests {
                 == AppRoute.workspace(.english, .wordQuiz).rootPageIdentity
         )
         #expect(
-            AppRoute.workspace(.english, .documents).rootPageIdentity
-                != AppRoute.workspace(.japanese, .documents).rootPageIdentity
+            AppRoute.workspace(.english, .lexicon).rootPageIdentity
+                != AppRoute.workspace(.japanese, .lexicon).rootPageIdentity
         )
     }
 
@@ -1045,7 +1075,7 @@ struct EgangnalTests {
 
         var entry = try #require(repository.entries(in: .english).first)
         #expect(entry.id == entryID)
-        #expect(entry.isManuallyCreated)
+        #expect(entry.source == .manual)
         #expect(entry.occurrenceDates.isEmpty)
         #expect(!entry.isHighFrequency)
 
@@ -1325,6 +1355,17 @@ struct EgangnalTests {
     }
 }
 
+/// 洗牌测试必须用确定性 UUID：随机 UUID 会让结果无法复现。
+private func makeShuffleEntry(index: Int) -> WordBookEntrySnapshot {
+    WordBookEntrySnapshot(
+        id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", index))!,
+        term: "word-\(index)",
+        meaning: "释义-\(index)",
+        source: .manual,
+        occurrenceDates: []
+    )
+}
+
 private func makePresentationEntry(
     index: Int,
     dates: [VocabularyDocumentDate] = []
@@ -1333,7 +1374,7 @@ private func makePresentationEntry(
         id: UUID(),
         term: "word-\(index)",
         meaning: "释义-\(index)",
-        isManuallyCreated: dates.isEmpty,
+        source: dates.isEmpty ? .manual : .markdownImport,
         occurrenceDates: dates
     )
 }

@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import OSLog
 import SwiftData
 
 @MainActor
@@ -15,6 +16,11 @@ struct AppDependencies {
     let workspaceNavigationStore: WorkspaceNavigationStore
     let wordQuizSoundPlayer: any WordQuizSoundPlaying
     let wordBookRepository: any WordBookRepository
+    let lexiconRepository: any LexiconRepository
+    /// 洗牌状态必须活在应用级：每次进入页面都新建的话，冷却期就失去意义。
+    /// 词库与单词本各自独立，互不影响对方的浏览顺序。
+    let lexiconShuffleController: ShuffleSeedController
+    let wordBookShuffleController: ShuffleSeedController
     let studyTimeController: StudyTimeController
     let appUpdateController: any AppUpdating
 
@@ -127,7 +133,17 @@ struct AppDependencies {
             // 生产环境降级到内存容器时禁止单词本写入，避免退出后静默丢失数据。
             wordBookRepository = UnavailableWordBookRepository()
         } else {
-            wordBookRepository = SwiftDataWordBookRepository(modelContainer: modelContainer)
+            let repository = SwiftDataWordBookRepository(modelContainer: modelContainer)
+            do {
+                try repository.migrateLegacyEntrySourcesIfNeeded()
+            } catch {
+                // 回填失败不阻塞启动：`WordEntry.source` 会退回旧字段推断，语义仍然正确，
+                // 只是每次启动重试一次。这里记录原因，不做静默忽略。
+                Logger(subsystem: "com.ly.Egangnal", category: "WordBook").warning(
+                    "词条来源回填失败，本次沿用旧字段推断：\(error.localizedDescription)"
+                )
+            }
+            wordBookRepository = repository
         }
         let profileStore = ProfileStore(
             repository: repository,
@@ -144,6 +160,19 @@ struct AppDependencies {
             initialMessage: initialMessage
         )
 
+        // 词库随 App 打包，不依赖 SwiftData；打开失败时保留原因并降级为明确失败实现，
+        // 页面据此显示"资源缺失"或"版本不兼容"，不会伪装成空词库。
+        let lexiconRepository: any LexiconRepository
+        do {
+            lexiconRepository = try SQLiteLexiconRepository.live()
+        } catch let error as LexiconRepositoryError {
+            lexiconRepository = UnavailableLexiconRepository(failure: error)
+        } catch {
+            lexiconRepository = UnavailableLexiconRepository(
+                failure: .openFailed(error.localizedDescription)
+            )
+        }
+
         return AppDependencies(
             modelContainer: modelContainer,
             profileStore: profileStore,
@@ -152,6 +181,9 @@ struct AppDependencies {
             workspaceNavigationStore: workspaceNavigationStore,
             wordQuizSoundPlayer: wordQuizSoundPlayer,
             wordBookRepository: wordBookRepository,
+            lexiconRepository: lexiconRepository,
+            lexiconShuffleController: ShuffleSeedController(),
+            wordBookShuffleController: ShuffleSeedController(),
             studyTimeController: studyTimeController,
             appUpdateController: appUpdateController
         )

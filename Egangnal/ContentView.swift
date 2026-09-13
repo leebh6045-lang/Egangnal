@@ -16,6 +16,9 @@ struct ContentView: View {
     let workspaceNavigationStore: WorkspaceNavigationStore
     let wordQuizSoundPlayer: any WordQuizSoundPlaying
     let wordBookRepository: any WordBookRepository
+    let lexiconRepository: any LexiconRepository
+    let lexiconShuffleController: ShuffleSeedController
+    let wordBookShuffleController: ShuffleSeedController
     let studyTimeController: StudyTimeController
     let appUpdateController: any AppUpdating
 
@@ -34,6 +37,9 @@ struct ContentView: View {
         }
         if arguments.contains("--ui-testing-workspace-word-quiz") {
             return .workspace(.english, .wordQuiz)
+        }
+        if arguments.contains("--ui-testing-workspace-lexicon") {
+            return .workspace(.english, .lexicon)
         }
         return .dashboard
     }
@@ -185,6 +191,7 @@ struct ContentView: View {
                 space: space,
                 repository: wordBookRepository,
                 settingsStore: settingsStore,
+                shuffle: wordBookShuffleController,
                 openWorkspace: openDashboard
             )
         case .wordQuiz:
@@ -193,13 +200,27 @@ struct ContentView: View {
                 candidateSource: WordQuizCandidateSource(
                     repository: wordBookRepository
                 ),
+                lexiconCandidateSource: LexiconQuizCandidateSource(
+                    lexiconRepository: lexiconRepository
+                ),
                 settingsStore: settingsStore,
                 soundPlayer: wordQuizSoundPlayer,
                 openWorkspace: openDashboard,
                 exitCoordinator: exitCoordinator
             )
-        case .documents:
-            WorkspaceDocumentsPlaceholder(openDashboard: openDashboard)
+        case .lexicon:
+            // 词库目前只有英语数据；日语空间继续显示占位，避免出现一个空词库。
+            if space == .english {
+                LexiconView(
+                    space: space,
+                    repository: lexiconRepository,
+                    wordBookRepository: wordBookRepository,
+                    shuffle: lexiconShuffleController,
+                    openDashboard: openDashboard
+                )
+            } else {
+                WorkspaceLexiconPlaceholder(openDashboard: openDashboard)
+            }
         }
     }
 
@@ -232,6 +253,9 @@ struct ContentView: View {
         workspaceNavigationStore: .preview,
         wordQuizSoundPlayer: SilentWordQuizSoundPlayer(),
         wordBookRepository: PreviewWordBookRepository(),
+        lexiconRepository: PreviewLexiconRepository(),
+        lexiconShuffleController: ShuffleSeedController(),
+        wordBookShuffleController: ShuffleSeedController(),
         studyTimeController: .preview,
         appUpdateController: DisabledAppUpdateController()
     )
