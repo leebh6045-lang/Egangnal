@@ -1,0 +1,146 @@
+{
+  "builder_version": "1.0.0",
+  "build_profile": "graded",
+  "generated_at": "2026-09-11T00:00:00Z",
+  "source": {
+    "provider": "ECDICT",
+    "provider_repository": "https://github.com/skywind3000/ECDICT",
+    "provider_commit": "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b",
+    "filename": "ecdict.csv",
+    "source_sha256": "1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
+    "source_bytes": 65933428,
+    "verified": true
+  },
+  "auxiliary_checks": {
+    "license_sha256": {
+      "file": "LICENSE",
+      "status": "match",
+      "expected": "f8552dd246f61a4e064569eae6194a01c6b3d63b03bf27c6ca863593c549ed0f",
+      "actual": "f8552dd246f61a4e064569eae6194a01c6b3d63b03bf27c6ca863593c549ed0f"
+    },
+    "readme_sha256": {
+      "file": "README.md",
+      "status": "match",
+      "expected": "0c3f95fc7e15f7eccf65feedb58ba3ebace1fe7b7cbdd1af60c9ace4cef9094b",
+      "actual": "0c3f95fc7e15f7eccf65feedb58ba3ebace1fe7b7cbdd1af60c9ace4cef9094b"
+    }
+  },
+  "entry_count": 7116,
+  "level_counts": {
+    "juniorHigh": 1603,
+    "seniorHigh": 3677,
+    "cet4": 3849,
+    "cet6": 5407
+  },
+  "level_relation_count": 14536,
+  "rows_scanned": 770611,
+  "row_width_mismatch": 0,
+  "rows_without_target_tag": 763495,
+  "rejected_empty_word": 0,
+  "rejected_empty_translation": 0,
+  "merged_duplicate_rows": 0,
+  "search_term_collision_count": 0,
+  "search_term_collisions": {},
+  "literal_newline_rows": 5330,
+  "literal_carriage_return_rows": 1,
+  "unknown_escapes": {},
+  "literal_escape_residue": 0,
+  "phonetic_missing": 67,
+  "phonetic_missing_rate": 0.0094,
+  "frequency_rank_missing": 188,
+  "bnc_rank_missing": 108,
+  "translation_length_chars": {
+    "min": 2,
+    "p50": 26,
+    "p90": 53,
+    "p99": 96,
+    "max": 191
+  },
+  "normalization": {
+    "status": "match",
+    "case_count": 18,
+    "mismatches": []
+  },
+  "database": {
+    "level_relation_count": 14536,
+    "integrity_check": "ok",
+    "foreign_key_violations": 0
+  },
+  "output": {
+    "path": "Egangnal/Resources/Lexicon/EgangnalLexicon.sqlite",
+    "bytes": 2617344,
+    "sha256": "2408c120c14cc64b12346695276678541736cbfaf5dc22c4b516b147e49d1262"
+  },
+  "quality_gates": [
+    {
+      "id": 1,
+      "description": "entry_count 与勘察基线一致（容差 1%）",
+      "expected": 7116,
+      "actual": 7116,
+      "passed": true
+    },
+    {
+      "id": 3,
+      "description": "中文释义为空的数量为 0",
+      "expected": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "id": 4,
+      "description": "无未处理的查询键碰撞",
+      "expected": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "id": 7,
+      "description": "查询键规范化与固定样例一致",
+      "expected": "all cases match",
+      "actual": "match",
+      "passed": true
+    },
+    {
+      "id": 8,
+      "description": "还原后无字面换行残留",
+      "expected": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "id": 9,
+      "description": "SQLite integrity_check 正常且无外键违规",
+      "expected": "ok / 0",
+      "actual": "ok / 0",
+      "passed": true
+    },
+    {
+      "id": 2,
+      "description": "等级 juniorHigh 非空且与基线一致（容差 1%）",
+      "expected": 1603,
+      "actual": 1603,
+      "passed": true
+    },
+    {
+      "id": 2,
+      "description": "等级 seniorHigh 非空且与基线一致（容差 1%）",
+      "expected": 3677,
+      "actual": 3677,
+      "passed": true
+    },
+    {
+      "id": 2,
+      "description": "等级 cet4 非空且与基线一致（容差 1%）",
+      "expected": 3849,
+      "actual": 3849,
+      "passed": true
+    },
+    {
+      "id": 2,
+      "description": "等级 cet6 非空且与基线一致（容差 1%）",
+      "expected": 5407,
+      "actual": 5407,
+      "passed": true
+    }
+  ]
+}

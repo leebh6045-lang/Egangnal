@@ -18,3 +18,6 @@ dist/
 # Swift Package Manager
 .build/
 .swiftpm/xcode/package.xcworkspace/xcuserdata/
+
+# 词库构建输入：原始 ECDICT 数据体积大且可重新取得，不进入仓库
+.lexicon-source/

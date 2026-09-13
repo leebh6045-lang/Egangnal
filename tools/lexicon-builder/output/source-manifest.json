@@ -1,0 +1,15 @@
+{
+  "provider": "ECDICT",
+  "provider_repository": "https://github.com/skywind3000/ECDICT",
+  "provider_commit": "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b",
+  "source_filename": "ecdict.csv",
+  "source_sha256": "1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
+  "license_sha256": "f8552dd246f61a4e064569eae6194a01c6b3d63b03bf27c6ca863593c549ed0f",
+  "readme_sha256": "0c3f95fc7e15f7eccf65feedb58ba3ebace1fe7b7cbdd1af60c9ace4cef9094b",
+  "mini_sha256": "6133bcc38ccfc1ed8eaf8f52a5cb567fb78f028d079647a85b4b92a99c3cf025",
+  "source_bytes": 65933428,
+  "downloaded_at": "2026-09-11",
+  "intended_use": "public-free",
+  "distribution_decision": "plan-A: MIT attribution + exclude collins/oxford/audio/detail",
+  "acquired_via": "raw.githubusercontent.com (direct download, not git clone)"
+}

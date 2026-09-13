@@ -1,0 +1,78 @@
+{
+  "version": "en-v1",
+  "description": "查询键规范化的跨语言固定样例。Python 构建期与 Swift 运行期必须得到相同结果。修改规范化协议时必须同时更新 version 与样例。",
+  "cases": [
+    {
+      "input": "apple",
+      "expected": "apple"
+    },
+    {
+      "input": "Apple",
+      "expected": "apple"
+    },
+    {
+      "input": "  apple  ",
+      "expected": "apple"
+    },
+    {
+      "input": "New   York",
+      "expected": "new york"
+    },
+    {
+      "input": "New\tYork",
+      "expected": "new york"
+    },
+    {
+      "input": "long-time",
+      "expected": "long-time"
+    },
+    {
+      "input": "don't",
+      "expected": "don't"
+    },
+    {
+      "input": "café",
+      "expected": "café"
+    },
+    {
+      "input": "café",
+      "expected": "café"
+    },
+    {
+      "input": "Über",
+      "expected": "über"
+    },
+    {
+      "input": "naïve",
+      "expected": "naïve"
+    },
+    {
+      "input": "co-operate",
+      "expected": "co-operate"
+    },
+    {
+      "input": "ABANDON",
+      "expected": "abandon"
+    },
+    {
+      "input": "a",
+      "expected": "a"
+    },
+    {
+      "input": "",
+      "expected": ""
+    },
+    {
+      "input": "   ",
+      "expected": ""
+    },
+    {
+      "input": "ＦｕｌｌＷｉｄｔｈ",
+      "expected": "ｆｕｌｌｗｉｄｔｈ"
+    },
+    {
+      "input": "İstanbul",
+      "expected": "i̇stanbul"
+    }
+  ]
+}
