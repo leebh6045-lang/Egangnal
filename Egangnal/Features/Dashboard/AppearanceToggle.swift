@@ -27,15 +27,23 @@ struct AppearanceToggle: View {
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
-        .help("切换到\(appearanceStore.mode.toggled.title)")
+        .help("切换到\(appearanceStore.mode.next.title)")
         .accessibilityLabel("切换主题")
         .accessibilityValue(appearanceStore.mode.title)
-        .accessibilityHint("切换到\(appearanceStore.mode.toggled.title)")
+        .accessibilityHint("切换到\(appearanceStore.mode.next.title)")
         .accessibilityIdentifier("dashboard.appearanceToggle")
     }
 
+    /// 图标表达"将要切换到"的主题，而不是当前主题。
     private var targetSystemImage: String {
-        appearanceStore.mode == .dark ? "sun.max.fill" : "moon.fill"
+        switch appearanceStore.mode.next {
+        case .light:
+            "sun.max.fill"
+        case .warm:
+            "book.closed.fill"
+        case .dark:
+            "moon.fill"
+        }
     }
 }
 

@@ -18,7 +18,7 @@ enum WorkspaceFeature: String, CaseIterable, Identifiable, Codable, Hashable, Se
         case .wordQuiz:
             "单词刷"
         case .lexicon:
-            "词库"
+            "集词阁"
         }
     }
 }

@@ -170,3 +170,66 @@ enum WordBookPaging {
         Set(entries.flatMap(\.occurrenceDates)).sorted(by: >)
     }
 }
+
+/// 手帐里的一组词条：一个日期页一组，或“未归档”一组。
+/// 放在领域层：分组规则是纯数据变换，视图层的手帐纸面只负责把它画出来。
+struct JournalSection<Item>: Identifiable {
+    let id: String
+    /// 为空时不画分组标题（例如按日期浏览时，页面标题已经是这一天）。
+    let title: String?
+    let subtitle: String?
+    let items: [Item]
+}
+
+/// 手帐排版的分组规则。
+enum WordBookJournal {
+    static let unarchivedSectionID = "unarchived"
+
+    /// 把一页词条按"最近一次出现的日期"分组，日期由近到远；没有日期的归入末尾的"未归档"。
+    /// 组内保持传入顺序（默认分页下就是洗牌后的顺序），不再二次排序。
+    static func sections(
+        for entries: [WordBookEntrySnapshot],
+        today: VocabularyDocumentDate? = nil
+    ) -> [JournalSection<WordBookEntrySnapshot>] {
+        var buckets: [VocabularyDocumentDate: [WordBookEntrySnapshot]] = [:]
+        var unarchived: [WordBookEntrySnapshot] = []
+        for entry in entries {
+            if let latest = entry.occurrenceDates.max() {
+                buckets[latest, default: []].append(entry)
+            } else {
+                unarchived.append(entry)
+            }
+        }
+
+        var sections = buckets
+            .sorted { $0.key > $1.key }
+            .map { date, items in
+                JournalSection(
+                    id: date.storageKey,
+                    title: date.templateText,
+                    subtitle: date == today ? "今天 · \(items.count) 词" : "\(items.count) 词",
+                    items: items
+                )
+            }
+        if !unarchived.isEmpty {
+            sections.append(
+                JournalSection(
+                    id: unarchivedSectionID,
+                    title: "未归档",
+                    subtitle: "\(unarchived.count) 词",
+                    items: unarchived
+                )
+            )
+        }
+        return sections
+    }
+
+    /// 按日期浏览时页面标题已经是这一天，手帐不再重复分组标题。
+    static func singleSection(
+        _ entries: [WordBookEntrySnapshot],
+        id: String
+    ) -> [JournalSection<WordBookEntrySnapshot>] {
+        guard !entries.isEmpty else { return [] }
+        return [JournalSection(id: id, title: nil, subtitle: nil, items: entries)]
+    }
+}

@@ -49,13 +49,13 @@ struct EgangnalTests {
         #expect(grid[31] == 29)
     }
 
-    @Test func calendarMonthDoesNotCrossYearBoundary() {
+    @Test func calendarMonthMovesAcrossYearBoundary() {
         let january = CalendarMonth(year: 2026, month: 1)
         let december = CalendarMonth(year: 2026, month: 12)
 
-        #expect(january.moving(by: -1) == nil)
+        #expect(january.moving(by: -1) == CalendarMonth(year: 2025, month: 12))
         #expect(january.moving(by: 1) == CalendarMonth(year: 2026, month: 2))
-        #expect(december.moving(by: 1) == nil)
+        #expect(december.moving(by: 1) == CalendarMonth(year: 2027, month: 1))
         #expect(december.moving(by: -1) == CalendarMonth(year: 2026, month: 11))
     }
 
@@ -101,8 +101,32 @@ struct EgangnalTests {
         #expect(
             DailyStudyFeedbackStatus.make(from: [japanese, english]) == .completed
         )
+        #expect(
+            DailyStudyFeedbackStatus.totalStudiedSeconds(from: [japanese, english]) == 900
+        )
     }
 
+    @Test func dailyStudyTotalRejectsInvalidDurations() {
+        let dateKey = StudyDateKey(year: 2026, month: 8, day: 19)
+        let activities = [
+            DailyStudyActivitySnapshot(
+                dateKey: dateKey,
+                space: .english,
+                studiedSeconds: -30,
+                hasEntered: true
+            ),
+            DailyStudyActivitySnapshot(
+                dateKey: dateKey,
+                space: .japanese,
+                studiedSeconds: .infinity,
+                hasEntered: true
+            )
+        ]
+
+        #expect(DailyStudyFeedbackStatus.totalStudiedSeconds(from: activities) == 0)
+    }
+
+    /// 月历底色只在同一周���、同一状态之间相连：橙橙相连、灰灰相连，跨色与跨周都断开。
     @Test func calendarActivityOnlyConnectsSameWeekAndSameStatus() {
         let statuses: [DailyStudyFeedbackStatus] = [
             .completed, .completed, .visited, .visited,
@@ -111,11 +135,15 @@ struct EgangnalTests {
         ]
 
         #expect(CalendarActivityLayout.connectsLeading(at: 1, statuses: statuses))
-        #expect(!CalendarActivityLayout.connectsLeading(at: 2, statuses: statuses))
+        #expect(!CalendarActivityLayout.connectsLeading(at: 2, statuses: statuses), "橙色不能连接灰色")
         #expect(CalendarActivityLayout.connectsTrailing(at: 2, statuses: statuses))
-        #expect(!CalendarActivityLayout.connectsTrailing(at: 6, statuses: statuses))
+        #expect(!CalendarActivityLayout.connectsTrailing(at: 6, statuses: statuses), "周日与下周一断开")
         #expect(!CalendarActivityLayout.connectsLeading(at: 7, statuses: statuses))
         #expect(!CalendarActivityLayout.connectsTrailing(at: 8, statuses: statuses))
+        #expect(!CalendarActivityLayout.connectsLeading(at: 0, statuses: statuses), "首格没有左邻居")
+        #expect(!CalendarActivityLayout.connectsTrailing(at: 9, statuses: statuses), "末格没有右邻居")
+        #expect(!CalendarActivityLayout.connectsLeading(at: 5, statuses: statuses), "无记录的日期不参与连接")
+        #expect(!CalendarActivityLayout.connectsLeading(at: 42, statuses: statuses), "越界索引不崩溃")
     }
 
     @Test func languageSpacesAreStableAndIndependent() {
@@ -127,11 +155,10 @@ struct EgangnalTests {
     }
 
     @Test func languageSpacesUseTheSameBlueAccent() {
-        let lightPalette = AppAppearance.light.palette
-        let darkPalette = AppAppearance.dark.palette
-
-        #expect(lightPalette.japaneseAccent == lightPalette.englishAccent)
-        #expect(darkPalette.japaneseAccent == darkPalette.englishAccent)
+        for appearance in AppAppearance.allCases {
+            let palette = appearance.palette
+            #expect(palette.japaneseAccent == palette.englishAccent, "\(appearance) 主题两种语言应共用强调色")
+        }
     }
 
     @Test func wordBookShuffleIsStableForOneSeedAndChangesWithAnother() {
@@ -172,7 +199,7 @@ struct EgangnalTests {
         )
         #expect(WorkspaceFeature.wordBook.title == "单词本")
         #expect(WorkspaceFeature.wordQuiz.title == "单词刷")
-        #expect(WorkspaceFeature.lexicon.title == "词库")
+        #expect(WorkspaceFeature.lexicon.title == "集词阁")
     }
 
     @Test @MainActor func workspaceNavigationDefaultsBothLanguagesToWordBook() {
@@ -599,10 +626,15 @@ struct EgangnalTests {
 
         #expect(store.mode == .light)
 
-        store.toggle()
+        store.cycle()
+
+        #expect(store.mode == .warm)
+        #expect(preferences.values[AppearanceStore.storageKey] == AppAppearance.warm.rawValue)
+        #expect(AppearanceStore(preferences: preferences).mode == .warm)
+
+        store.select(.dark)
 
         #expect(store.mode == .dark)
-        #expect(preferences.values[AppearanceStore.storageKey] == AppAppearance.dark.rawValue)
         #expect(AppearanceStore(preferences: preferences).mode == .dark)
     }
 
@@ -624,12 +656,14 @@ struct EgangnalTests {
         )
 
         #expect(store.showsLanguageCardArtwork)
-        #expect(store.showsGridBackground)
+        #expect(store.dashboardBackgroundPattern == .grid)
+        #expect(store.wordBook.backgroundPattern == .grid)
         #expect(store.wordQuizSoundEffect == .off)
         #expect(!store.hasExportDirectory)
 
         store.setLanguageCardArtwork(false)
-        store.setGridBackground(false)
+        store.setBackgroundPattern(.none, for: .dashboard)
+        store.setBackgroundPattern(.dots, for: .wordBook)
         store.setWordQuizSoundEffect(.sound2)
 
         let restored = AppSettingsStore(
@@ -637,11 +671,13 @@ struct EgangnalTests {
             exportDirectoryService: service
         )
         #expect(!restored.showsLanguageCardArtwork)
-        #expect(!restored.showsGridBackground)
+        #expect(restored.dashboardBackgroundPattern == .none)
+        #expect(restored.wordBook.backgroundPattern == .dots)
         #expect(restored.wordQuizSoundEffect == .sound2)
         #expect(restored.personalization == AppPersonalization(
             showsLanguageCardArtwork: false,
-            showsGridBackground: false
+            dashboardBackgroundPattern: .none,
+            wordBook: WordBookPersonalization(backgroundPattern: .dots)
         ))
     }
 
@@ -1621,22 +1657,6 @@ private enum TestStudyTimeRepositoryError: Error {
     case saveFailed
 }
 
-private final class TestAppearancePreferences: AppearancePreferences {
-    private(set) var values: [String: String]
-
-    init(values: [String: String] = [:]) {
-        self.values = values
-    }
-
-    func string(forKey defaultName: String) -> String? {
-        values[defaultName]
-    }
-
-    func set(_ value: Any?, forKey defaultName: String) {
-        values[defaultName] = value as? String
-    }
-}
-
 private final class TestWorkspaceNavigationPreferences: WorkspaceNavigationPreferences {
     private(set) var values: [String: String]
 
@@ -1650,30 +1670,6 @@ private final class TestWorkspaceNavigationPreferences: WorkspaceNavigationPrefe
 
     func set(_ value: Any?, forKey defaultName: String) {
         values[defaultName] = value as? String
-    }
-}
-
-private final class TestAppSettingsPreferences: AppSettingsPreferences {
-    private var values: [String: Any] = [:]
-
-    func object(forKey defaultName: String) -> Any? {
-        values[defaultName]
-    }
-
-    func data(forKey defaultName: String) -> Data? {
-        values[defaultName] as? Data
-    }
-
-    func string(forKey defaultName: String) -> String? {
-        values[defaultName] as? String
-    }
-
-    func set(_ value: Any?, forKey defaultName: String) {
-        values[defaultName] = value
-    }
-
-    func removeObject(forKey defaultName: String) {
-        values.removeValue(forKey: defaultName)
     }
 }
 

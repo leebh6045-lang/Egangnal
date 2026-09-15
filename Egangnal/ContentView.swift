@@ -14,6 +14,7 @@ struct ContentView: View {
     let appearanceStore: AppearanceStore
     let settingsStore: AppSettingsStore
     let workspaceNavigationStore: WorkspaceNavigationStore
+    let dashboardStore: DashboardStore
     let wordQuizSoundPlayer: any WordQuizSoundPlaying
     let wordBookRepository: any WordBookRepository
     let lexiconRepository: any LexiconRepository
@@ -50,6 +51,7 @@ struct ContentView: View {
             case .dashboard:
                 DashboardView(
                     appearanceStore: appearanceStore,
+                    dashboardStore: dashboardStore,
                     studyTimeController: studyTimeController,
                     openLanguage: openLanguage,
                     openSettings: openSettings
@@ -57,6 +59,7 @@ struct ContentView: View {
                 .transition(rootPageTransition)
             case .settings:
                 SettingsView(
+                    appearanceStore: appearanceStore,
                     settingsStore: settingsStore,
                     wordQuizSoundPlayer: wordQuizSoundPlayer,
                     appUpdateController: appUpdateController,
@@ -251,6 +254,7 @@ struct ContentView: View {
         appearanceStore: .preview,
         settingsStore: .preview,
         workspaceNavigationStore: .preview,
+        dashboardStore: .preview,
         wordQuizSoundPlayer: SilentWordQuizSoundPlayer(),
         wordBookRepository: PreviewWordBookRepository(),
         lexiconRepository: PreviewLexiconRepository(),

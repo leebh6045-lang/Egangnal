@@ -95,6 +95,13 @@ struct WorkspaceShell<Content: View>: View {
             }
 
             if isNavigationVisible {
+                // 材质带与功能栏同进同出：它只是功能栏的“影子”，不单独存在。
+                WorkspaceNavigationBackdrop()
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea()
+                    .transition(backdropTransition)
+                    .zIndex(1)
+
                 floatingNavigation
                     .padding(.top, AppTheme.workspaceNavigationTopInset)
                     .transition(navigationTransition)
@@ -204,7 +211,8 @@ struct WorkspaceShell<Content: View>: View {
             width: AppTheme.workspaceNavigationWidth,
             height: AppTheme.workspaceNavigationHeight
         )
-        .background(palette.panel.opacity(0.96), in: .capsule)
+        .background { WorkspaceNavigationCapsuleBackground() }
+        .clipShape(.capsule)
         .overlay {
             Capsule()
                 .stroke(palette.border.opacity(0.82), lineWidth: 1)
@@ -292,6 +300,11 @@ struct WorkspaceShell<Content: View>: View {
     private var navigationTransition: AnyTransition {
         guard !reduceMotion else { return .identity }
         return .offset(y: -10).combined(with: .opacity)
+    }
+
+    /// 材质带只淡入淡出，不随功能栏位移：位移会让模糊边界肉眼可见地滑动。
+    private var backdropTransition: AnyTransition {
+        reduceMotion ? .identity : .opacity
     }
 
     private var featurePageTransition: AnyTransition {
@@ -423,7 +436,7 @@ struct WorkspaceLexiconPlaceholder: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            WorkspaceBackground()
+            WorkspaceBackground(page: .lexicon)
 
             VStack(spacing: 14) {
                 Image(systemName: "exclamationmark.triangle")

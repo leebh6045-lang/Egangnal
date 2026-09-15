@@ -11,6 +11,7 @@ import SwiftUI
 /// 悬停浮层与每页 50 条的滚动分页上。公共词库只读，页面没有任何写入路径。
 struct LexiconView: View {
     @Environment(\.appPalette) private var palette
+    @Environment(\.appPersonalization) private var personalization
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let space: LanguageSpace
@@ -28,6 +29,8 @@ struct LexiconView: View {
     /// 立即生效的悬停词块：收录按钮不等悬停延迟。
     @State private var hoveredCellID: UUID?
     @State private var hoverTask: Task<Void, Never>?
+    /// 横格本所在滚动区的窗口位置，背景据此抠掉纸面下的网格。
+    @State private var ruledSheetRegion: RuledSheetRegion?
 
     private static let gridSpace = "lexicon.grid"
     private static let topAnchorID = "lexicon.grid.top"
@@ -56,11 +59,11 @@ struct LexiconView: View {
         @Bindable var store = store
 
         return ZStack(alignment: .topLeading) {
-            WorkspaceBackground()
+            WorkspaceBackground(page: .lexicon, gridCutout: gridCutout)
 
             VStack(spacing: 0) {
                 LexiconHeaderRow(
-                    title: "\(space.title)词库",
+                    title: "\(space.title)集词阁",
                     resultCount: store.page.totalCount,
                     canReshuffle: !store.isSearching,
                     reshuffle: { store.reshuffle() },
@@ -76,6 +79,13 @@ struct LexiconView: View {
                 )
                 LexiconSeparator()
 
+                if personalization.lexicon.showsGuideWords {
+                    LexiconGuideWords(
+                        first: store.page.entries.first?.term,
+                        last: store.page.entries.last?.term
+                    )
+                }
+
                 content
 
                 LexiconPaginationBar(
@@ -84,6 +94,17 @@ struct LexiconView: View {
                     goToNext: { store.goToNextPage() }
                 )
             }
+
+            if personalization.lexicon.showsStamp {
+                LexiconLibraryStamp()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    // 藏书章避开右下角的清除遮盖按钮：放在它左侧。
+                    .padding(.trailing, AppTheme.contentPadding + AppTheme.toggleSize + 12)
+                    .padding(.bottom, AppTheme.contentPadding + 8)
+            }
+        }
+        .onPreferenceChange(RuledSheetRegionPreferenceKey.self) { region in
+            ruledSheetRegion = region
         }
         .onAppear {
             if store.page.entries.isEmpty, store.errorMessage == nil {
@@ -107,7 +128,7 @@ struct LexiconView: View {
     @ViewBuilder
     private var content: some View {
         if let errorMessage = store.errorMessage {
-            LexiconEmptyState(title: "词库暂不可用", message: errorMessage)
+            LexiconEmptyState(title: "集词阁暂不可用", message: errorMessage)
         } else if store.isEmpty {
             LexiconEmptyState(title: "没有匹配的词条", message: emptyMessage)
         } else {
@@ -122,6 +143,14 @@ struct LexiconView: View {
         return "「\(store.selectedLevelTitle)」下暂时没有词条。"
     }
 
+    private var layoutStyle: LexiconLayoutStyle {
+        personalization.lexicon.layout
+    }
+
+    private var gridCutout: RuledSheetRegion? {
+        layoutStyle == .ruled ? ruledSheetRegion : nil
+    }
+
     private var gridArea: some View {
         GeometryReader { viewport in
             ScrollViewReader { reader in
@@ -133,26 +162,12 @@ struct LexiconView: View {
                             .frame(height: 0)
                             .id(Self.topAnchorID)
 
-                        LazyVGrid(
-                            columns: [
-                                GridItem(
-                                    .flexible(),
-                                    spacing: AppTheme.wordBookEntryColumnSpacing
-                                ),
-                                GridItem(.flexible())
-                            ],
-                            spacing: AppTheme.lexiconGridRowSpacing
-                        ) {
-                            ForEach(store.page.entries) { entry in
-                                cell(entry)
-                            }
-                        }
+                        entryContainer
                     }
-                    .padding(.horizontal, AppTheme.contentPadding)
-                    .padding(.top, 20)
-                    // 为右下角悬浮的清除按钮预留空间，避免遮住最后一行。
-                    .padding(.bottom, 56)
                 }
+                .ruledSheetRegion(
+                    layoutStyle == .ruled ? personalization.lexicon.ruledLineStyle : nil
+                )
                 .coordinateSpace(name: Self.gridSpace)
                 .overlay(alignment: .topLeading) {
                     tooltipLayer(viewport: viewport.size)
@@ -186,12 +201,49 @@ struct LexiconView: View {
         }
     }
 
+    /// 排版样式只决定词块被装进哪种容器；词块本身通过 `EntryFieldArrangement` 适配。
+    @ViewBuilder
+    private var entryContainer: some View {
+        switch layoutStyle {
+        case .standard:
+            LazyVGrid(
+                columns: [
+                    GridItem(
+                        .flexible(),
+                        spacing: AppTheme.entryGridColumnSpacing
+                    ),
+                    GridItem(.flexible())
+                ],
+                spacing: AppTheme.entryGridRowSpacing
+            ) {
+                ForEach(store.page.entries) { entry in
+                    cell(entry)
+                }
+            }
+            .padding(.horizontal, AppTheme.contentPadding)
+            .padding(.top, 20)
+            // 为右下角悬浮的清除按钮预留空间，避免遮住最后一行。
+            .padding(.bottom, 56)
+        case .ruled:
+            RuledEntrySheet(
+                items: store.page.entries,
+                lineStyle: personalization.lexicon.ruledLineStyle,
+                showsGrid: personalization.lexicon.backgroundPattern != .none,
+                horizontalInset: AppTheme.contentPadding,
+                bottomInset: AppTheme.ruledLexiconBottomInset
+            ) { entry in
+                cell(entry)
+            }
+        }
+    }
+
     private func cell(_ entry: LexiconEntry) -> some View {
         let display = LexiconGlossFormatter.browsingDisplay(from: entry.gloss)
 
         return LexiconEntryCell(
             entry: entry,
             display: display,
+            arrangement: layoutStyle.fieldArrangement,
             keyword: store.keyword,
             searchMode: store.searchMode,
             accent: palette.accent(for: space),

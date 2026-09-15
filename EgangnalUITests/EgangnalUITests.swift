@@ -178,30 +178,48 @@ final class EgangnalUITests: XCTestCase {
     }
 
     @MainActor
-    func testPrimaryContentUsesSharedLeadingEdge() throws {
+    func testDashboardRecentPagesAreReadOnlyAndUseRealWordCounts() throws {
         let app = makeApplication(
-            additionalArguments: ["--ui-testing-compact-window"]
+            additionalArguments: [
+                "--ui-testing-compact-window",
+                "--ui-testing-word-quiz-fixtures"
+            ]
         )
         app.launch()
         app.activate()
 
-        let brandSubtitle = app.staticTexts["dashboard.brand.subtitle"]
-        let firstLauncher = app.buttons["dashboard.open.japanese"]
-        let launcherGroup = app.descendants(matching: .any)["dashboard.languageLauncher"]
-        let englishLauncher = app.buttons["dashboard.open.english"]
-        XCTAssertTrue(brandSubtitle.waitForExistence(timeout: 3))
-        XCTAssertTrue(firstLauncher.exists)
-        XCTAssertTrue(launcherGroup.exists)
-        XCTAssertTrue(englishLauncher.exists)
-        // macOS 可能把容器的布局槽扩展到按钮语义 frame，视觉边缘由截图和卡片自身布局保证。
-        XCTAssertLessThanOrEqual(
-            abs(brandSubtitle.frame.minX - launcherGroup.frame.minX),
-            48,
-            "品牌与语言入口应处于同一左侧内容列"
+        let latestPage = app.descendants(matching: .any)[
+            "dashboard.recentPage.2026-08-17"
+        ]
+        let previousPage = app.descendants(matching: .any)[
+            "dashboard.recentPage.2026-08-16"
+        ]
+        XCTAssertTrue(latestPage.waitForExistence(timeout: 3))
+        XCTAssertTrue(previousPage.exists)
+        XCTAssertEqual(
+            app.staticTexts["dashboard.title"].label,
+            "今天想学点什么？"
         )
-        keepScreenshot(of: app, named: "Dashboard Aligned Without Decorative Icons")
+        XCTAssertEqual(latestPage.label, "8月17日，收录 3 个单词")
+        XCTAssertEqual(previousPage.label, "8月16日，收录 9 个单词")
+        XCTAssertLessThan(
+            latestPage.frame.width,
+            app.buttons["dashboard.open.english"].frame.width * 0.6,
+            "最近页面标签应按内容收拢，不能继续拉伸到卡片宽度"
+        )
+        XCTAssertEqual(
+            app.buttons.matching(identifier: "dashboard.recentPage.2026-08-17").count,
+            0,
+            "最近页面摘要必须是只读展示，不能伪装成按钮"
+        )
+        XCTAssertFalse(app.staticTexts["dashboard.brand.subtitle"].exists)
+        let continuationTexts = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS '继续：'")
+        )
+        XCTAssertFalse(continuationTexts.firstMatch.exists)
+        keepScreenshot(of: app, named: "Dashboard Read Only Recent Pages")
 
-        click(englishLauncher, in: app)
+        click(app.buttons["dashboard.open.english"], in: app)
         let workspaceBack = app.buttons["wordBook.back"]
         let workspaceTitle = app.staticTexts["wordBook.english.title"]
         XCTAssertTrue(workspaceBack.waitForExistence(timeout: 3))
@@ -513,26 +531,176 @@ final class EgangnalUITests: XCTestCase {
         click(settingsButton, in: app)
         XCTAssertTrue(app.staticTexts["settings.title"].waitForExistence(timeout: 3))
 
+        let appearancePicker = app.radioGroups["settings.appearance"]
         let artworkToggle = app.switches["settings.personalization.cardArtwork"]
-        let gridToggle = app.switches["settings.personalization.gridBackground"]
+        let dashboardBackground = app.radioGroups[
+            "settings.personalization.dashboardBackground"
+        ]
+        let wordBookBackground = app.radioGroups["settings.background.wordBook"]
+        let lexiconBackground = app.radioGroups["settings.background.lexicon"]
+        let wordQuizBackground = app.radioGroups["settings.background.wordQuiz"]
+        let wordBookLayout = app.radioGroups["settings.layout.wordBook"]
+        let lexiconLayout = app.radioGroups["settings.layout.lexicon"]
+        let wordBookRuledLineStyle = app.radioGroups["settings.layout.wordBookRuledLineStyle"]
+        let lexiconRuledLineStyle = app.radioGroups["settings.layout.lexiconRuledLineStyle"]
         let soundPicker = app.radioGroups["settings.wordQuiz.soundEffect"]
         let soundPreview = app.buttons["settings.wordQuiz.soundPreview"]
         let updateButton = app.buttons["settings.appUpdate.check"]
+        XCTAssertTrue(appearancePicker.exists)
         XCTAssertTrue(artworkToggle.exists)
-        XCTAssertTrue(gridToggle.exists)
+        XCTAssertTrue(dashboardBackground.exists)
+        XCTAssertTrue(wordBookBackground.exists)
+        XCTAssertTrue(lexiconBackground.exists)
+        XCTAssertTrue(wordQuizBackground.exists)
+        XCTAssertTrue(wordBookLayout.exists)
+        XCTAssertTrue(lexiconLayout.exists)
+        XCTAssertTrue(wordBookRuledLineStyle.exists)
+        XCTAssertTrue(lexiconRuledLineStyle.exists)
         XCTAssertTrue(soundPicker.exists)
         XCTAssertTrue(soundPreview.exists)
         XCTAssertTrue(updateButton.exists)
         XCTAssertFalse(updateButton.isEnabled)
         XCTAssertFalse(soundPreview.isEnabled)
+        XCTAssertFalse(
+            wordBookRuledLineStyle.isEnabled,
+            "单词本用默认排版时，它的横格线样式没有可见效果，应不可用"
+        )
+        XCTAssertFalse(lexiconRuledLineStyle.isEnabled)
         click(artworkToggle, in: app)
-        click(gridToggle, in: app)
+        click(dashboardBackground.radioButtons["无"], in: app)
+        scrollToReveal(wordBookBackground, in: app)
+        click(wordBookBackground.radioButtons["点阵"], in: app)
+        // 设置页已高于默认窗口，下方分区需要先滚入可视范围再点击。
+        scrollToReveal(soundPicker, in: app)
         click(soundPicker.radioButtons["音效 1"], in: app)
         XCTAssertTrue(soundPreview.isEnabled)
         click(soundPreview, in: app)
+        scrollToReveal(appearancePicker, in: app)
+        click(appearancePicker.radioButtons["暖纸主题"], in: app)
 
+        scrollToReveal(app.buttons["settings.back"], in: app)
         click(app.buttons["settings.back"], in: app)
         XCTAssertTrue(app.staticTexts["dashboard.title"].waitForExistence(timeout: 3))
+        XCTAssertEqual(
+            appearanceButton.value as? String,
+            "暖纸主题",
+            "设置页选定的主题应立即作用于首页"
+        )
+    }
+
+    @MainActor
+    func testRuledLayoutIsOptionalAndAppliesPerPage() throws {
+        let app = makeApplication(
+            additionalArguments: [
+                "--ui-testing-word-book-fixtures",
+                "--ui-testing-settings"
+            ]
+        )
+        app.launch()
+        app.activate()
+
+        XCTAssertTrue(app.staticTexts["settings.title"].waitForExistence(timeout: 3))
+        let wordBookLayout = app.radioGroups["settings.layout.wordBook"]
+        let wordBookRuledLineStyle = app.radioGroups["settings.layout.wordBookRuledLineStyle"]
+        let lexiconRuledLineStyle = app.radioGroups["settings.layout.lexiconRuledLineStyle"]
+        XCTAssertTrue(wordBookLayout.exists)
+        XCTAssertFalse(wordBookRuledLineStyle.isEnabled)
+
+        scrollToReveal(wordBookLayout, in: app)
+        click(wordBookLayout.radioButtons["横格本"], in: app)
+        XCTAssertTrue(wordBookRuledLineStyle.isEnabled, "单词本启用横格本后它的线条样式应可用")
+        XCTAssertFalse(lexiconRuledLineStyle.isEnabled, "集词阁的线条样式不随单词本启用")
+        scrollToReveal(wordBookRuledLineStyle, in: app)
+        click(wordBookRuledLineStyle.radioButtons["虚线"], in: app)
+
+        scrollToReveal(app.buttons["settings.back"], in: app)
+        click(app.buttons["settings.back"], in: app)
+        XCTAssertTrue(app.staticTexts["dashboard.title"].waitForExistence(timeout: 3))
+        click(app.buttons["dashboard.open.english"], in: app)
+
+        let sheet = app.descendants(matching: .any)["ruledSheet"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 3), "单词本应切换为横格本")
+        XCTAssertTrue(app.descendants(matching: .any)["ruledSheet.row.1"].exists)
+        let apple = app.buttons["apple"]
+        XCTAssertTrue(apple.exists, "横格本下词条仍应可见")
+        click(apple, in: app)
+        XCTAssertTrue(
+            app.buttons["单词已隐藏"].firstMatch.waitForExistence(timeout: 3),
+            "横格本下遮盖仍应可用"
+        )
+        keepScreenshot(of: app, named: "Word Book Ruled Sheet")
+
+        // 词库有自己的排版偏好，不随单词本切换。
+        revealWorkspaceNavigation(in: app)
+        click(app.buttons["workspace.navigation.feature.lexicon"], in: app)
+        XCTAssertTrue(app.staticTexts["lexicon.title"].waitForExistence(timeout: 3))
+        XCTAssertFalse(
+            app.descendants(matching: .any)["ruledSheet"].exists,
+            "词库排版应独立于单词本"
+        )
+    }
+
+    @MainActor
+    func testJournalLayoutGroupsByDateAndAtmosphereTogglesApplyPerPage() throws {
+        let app = makeApplication(
+            additionalArguments: [
+                "--ui-testing-word-quiz-fixtures",
+                "--ui-testing-settings"
+            ]
+        )
+        app.launch()
+        app.activate()
+
+        XCTAssertTrue(app.staticTexts["settings.title"].waitForExistence(timeout: 3))
+        let wordBookLayout = app.radioGroups["settings.layout.wordBook"]
+        XCTAssertEqual(wordBookLayout.radioButtons.count, 3, "单词本应有 默认 / 横格本 / 手帐 三项")
+        scrollToReveal(wordBookLayout, in: app)
+        click(wordBookLayout.radioButtons["手帐"], in: app)
+
+        let guideWordsToggle = app.switches["settings.atmosphere.lexiconGuideWords"]
+        let stampToggle = app.switches["settings.atmosphere.lexiconStamp"]
+        let lampToggle = app.switches["settings.atmosphere.wordBookLamp"]
+        let wordBookBackground = app.radioGroups["settings.background.wordBook"]
+        scrollToReveal(guideWordsToggle, in: app)
+        XCTAssertTrue(lampToggle.exists)
+        XCTAssertTrue(wordBookBackground.exists)
+        XCTAssertTrue(stampToggle.exists)
+        click(guideWordsToggle, in: app)
+        scrollToReveal(wordBookBackground, in: app)
+        click(wordBookBackground.radioButtons["点阵"], in: app)
+
+        scrollToReveal(app.buttons["settings.back"], in: app)
+        click(app.buttons["settings.back"], in: app)
+        XCTAssertTrue(app.staticTexts["dashboard.title"].waitForExistence(timeout: 3))
+        click(app.buttons["dashboard.open.english"], in: app)
+
+        // 单词刷夹具导入了两个日期的词，手帐应按日期分成两组。
+        let journal = app.descendants(matching: .any)["journalSheet"]
+        XCTAssertTrue(journal.waitForExistence(timeout: 3), "单词本应切换为手帐")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["journalSheet.section.2026-08-17"].exists,
+            "较新的日期应作为一组出现"
+        )
+        XCTAssertTrue(app.descendants(matching: .any)["journalSheet.section.2026-08-16"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["ruledSheet"].exists)
+        let apple = app.buttons["apple"]
+        XCTAssertTrue(apple.exists)
+        click(apple, in: app)
+        XCTAssertTrue(
+            app.buttons["单词已隐藏"].firstMatch.waitForExistence(timeout: 3),
+            "手帐下遮盖仍应可用"
+        )
+        keepScreenshot(of: app, named: "Word Book Journal Sheet")
+
+        revealWorkspaceNavigation(in: app)
+        click(app.buttons["workspace.navigation.feature.lexicon"], in: app)
+        XCTAssertTrue(app.staticTexts["lexicon.title"].waitForExistence(timeout: 3))
+        XCTAssertEqual(app.staticTexts["lexicon.title"].label, "英语集词阁")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["lexicon.guideWords"].waitForExistence(timeout: 3),
+            "开启页眉词后集词阁应显示本页首尾词"
+        )
+        keepScreenshot(of: app, named: "Lexicon Guide Words")
     }
 
     @MainActor
@@ -664,7 +832,7 @@ final class EgangnalUITests: XCTestCase {
             lexiconTitle.waitForExistence(timeout: 3),
             "英语空间的学习资料应显示词库"
         )
-        XCTAssertEqual(lexiconTitle.label, "英语词库")
+        XCTAssertEqual(lexiconTitle.label, "英语集词阁")
         XCTAssertFalse(
             app.descendants(matching: .any)["workspace.lexicon.placeholder"].exists,
             "英语空间不应再出现学习资料占位页"
@@ -1142,7 +1310,7 @@ final class EgangnalUITests: XCTestCase {
     }
 
     @MainActor
-    func testTogglesCalendarAndChangesMonth() throws {
+    func testDashboardCalendarBrowsesMonthsAndShowsOneTodaySummary() throws {
         let app = makeApplication()
         app.launch()
         app.activate()
@@ -1151,26 +1319,34 @@ final class EgangnalUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["基础语法"].exists)
         XCTAssertFalse(app.staticTexts["学习资料"].exists)
 
-        let dateButton = app.buttons["dashboard.date.toggle"]
-        XCTAssertTrue(dateButton.waitForExistence(timeout: 3))
-        click(dateButton, in: app)
+        let monthTitle = app.staticTexts["dashboard.calendar.monthTitle"]
+        XCTAssertTrue(monthTitle.waitForExistence(timeout: 3))
+        // `Text(verbatim:)` 的文字在辅助功能树里是 value 而不是 label，读 label 永远是空串。
+        let titleText = { monthTitle.value as? String ?? "" }
+        let currentMonthTitle = titleText()
+        XCTAssertFalse(currentMonthTitle.isEmpty, "月份标题必须能读到文字")
+        let previousMonth = app.buttons["dashboard.calendar.previousMonth"]
+        let nextMonth = app.buttons["dashboard.calendar.nextMonth"]
+        XCTAssertTrue(previousMonth.exists)
+        XCTAssertTrue(nextMonth.exists)
 
-        let monthHeader = app.buttons["dashboard.calendar.header"]
-        XCTAssertTrue(monthHeader.waitForExistence(timeout: 3))
-        let initialTitle = monthHeader.label
-        XCTAssertFalse(initialTitle.contains(","))
-
-        let nextButton = app.buttons["dashboard.calendar.nextMonth"]
-        let previousButton = app.buttons["dashboard.calendar.previousMonth"]
-        let monthButton = nextButton.isEnabled ? nextButton : previousButton
-        XCTAssertTrue(monthButton.isEnabled)
-        click(monthButton, in: app)
-        XCTAssertNotEqual(monthHeader.label, initialTitle)
-
-        let collapseButton = app.buttons["dashboard.calendar.collapse"]
-        XCTAssertTrue(collapseButton.waitForExistence(timeout: 3))
-        click(collapseButton, in: app)
-        XCTAssertTrue(dateButton.waitForExistence(timeout: 3))
+        click(previousMonth, in: app)
+        XCTAssertNotEqual(titleText(), currentMonthTitle)
+        click(nextMonth, in: app)
+        XCTAssertEqual(titleText(), currentMonthTitle)
+        click(nextMonth, in: app)
+        XCTAssertNotEqual(titleText(), currentMonthTitle)
+        click(previousMonth, in: app)
+        XCTAssertEqual(titleText(), currentMonthTitle)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["dashboard.today.summary"].exists
+        )
+        XCTAssertEqual(app.descendants(matching: .any).matching(
+            identifier: "dashboard.today.summary"
+        ).count, 1)
+        XCTAssertTrue(app.descendants(matching: .any)["dashboard.today.minutes"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["dashboard.today.status"].exists)
+        XCTAssertFalse(app.buttons["dashboard.date.toggle"].exists)
     }
 
     @MainActor
@@ -1211,6 +1387,7 @@ final class EgangnalUITests: XCTestCase {
         let stableFrames = [
             app.staticTexts["dashboard.title"].frame,
             app.buttons["dashboard.open.japanese"].frame,
+            app.descendants(matching: .any)["dashboard.recentPages"].frame,
             app.buttons["dashboard.settings"].frame,
             app.otherElements["dashboard.calendarPanel"].frame,
             app.buttons["dashboard.appearanceToggle"].frame
@@ -1241,7 +1418,7 @@ final class EgangnalUITests: XCTestCase {
     }
 
     @MainActor
-    func testDashboardLayoutAtExpandedCalendar() throws {
+    func testDashboardLayoutAtCompactWindow() throws {
         let app = makeApplication(
             additionalArguments: ["--ui-testing-compact-window"]
         )
@@ -1255,7 +1432,7 @@ final class EgangnalUITests: XCTestCase {
         XCTAssertFalse(app.buttons["profile.editNickname"].exists)
         XCTAssertTrue(app.buttons["dashboard.open.japanese"].exists)
         XCTAssertTrue(app.buttons["dashboard.open.english"].exists)
-        XCTAssertTrue(app.buttons["dashboard.date.toggle"].exists)
+        XCTAssertTrue(app.staticTexts["dashboard.calendar.monthTitle"].exists)
         XCTAssertTrue(app.buttons["dashboard.appearanceToggle"].exists)
         XCTAssertTrue(app.buttons["dashboard.settings"].exists)
         XCTAssertTrue(app.buttons["window.close"].exists)
@@ -1266,55 +1443,141 @@ final class EgangnalUITests: XCTestCase {
         let englishCard = app.buttons["dashboard.open.english"]
         let brandButton = app.buttons["dashboard.brand.toggle"]
         let calendarPanel = app.otherElements["dashboard.calendarPanel"]
+        let recentPages = app.descendants(matching: .any)["dashboard.recentPages"]
         XCTAssertTrue(brandButton.waitForExistence(timeout: 3))
         XCTAssertTrue(calendarPanel.waitForExistence(timeout: 3))
-        XCTAssertEqual(
-            brandButton.frame.minY,
-            calendarPanel.frame.minY,
-            accuracy: 2,
-            "品牌名称顶部应与日历顶部对齐"
-        )
-        XCTAssertGreaterThan(
-            calendarPanel.frame.minY - window.frame.minY,
-            56,
-            "品牌和日历需要保留舒适的顶部留白"
-        )
+        XCTAssertTrue(recentPages.waitForExistence(timeout: 3))
         XCTAssertLessThan(calendarPanel.frame.minY, japaneseCard.frame.minY)
         XCTAssertLessThan(
-            englishCard.frame.minX,
-            japaneseCard.frame.minX,
-            "首页语言入口应保持英语在左、日语在右"
+            englishCard.frame.minY,
+            japaneseCard.frame.minY,
+            "最小窗口中语言卡片应纵向排列，避免压缩封面比例"
         )
-        XCTAssertLessThan(
-            englishCard.frame.midX,
-            calendarPanel.frame.minX,
-            "英语入口与日历应分处左右两列"
+        XCTAssertEqual(
+            englishCard.frame.width,
+            japaneseCard.frame.width,
+            accuracy: 1
         )
-        XCTAssertLessThan(japaneseCard.frame.width / japaneseCard.frame.height, 2.1)
-        XCTAssertLessThan(englishCard.frame.width / englishCard.frame.height, 2.1)
-
-        let collapsedCardFrames = [japaneseCard.frame, englishCard.frame]
-
-        click(app.buttons["dashboard.date.toggle"], in: app)
-        XCTAssertTrue(
-            app.buttons["dashboard.calendar.collapse"].waitForExistence(timeout: 3)
+        XCTAssertEqual(englishCard.frame.width, 320, accuracy: 2)
+        XCTAssertEqual(englishCard.frame.height, 154, accuracy: 2)
+        XCTAssertLessThanOrEqual(
+            recentPages.frame.maxY,
+            window.frame.maxY,
+            "最近页面摘要不能溢出最小窗口"
         )
-        waitForStableFrame(of: calendarPanel, timeout: 1)
-        assertFrames(
-            [japaneseCard.frame, englishCard.frame],
-            equal: collapsedCardFrames
+        XCTAssertLessThanOrEqual(
+            calendarPanel.frame.height,
+            calendarPanel.frame.width * 1.35,
+            "月历不能被空白日期单元格纵向拉长"
         )
-        XCTAssertLessThan(englishCard.frame.midX, calendarPanel.frame.minX)
-        XCTAssertTrue(app.buttons["dashboard.calendar.collapse"].exists)
         XCTAssertFalse(
-            app.buttons["dashboard.calendar.collapse"].frame.intersects(
+            calendarPanel.frame.intersects(
                 app.buttons["dashboard.appearanceToggle"].frame
             ),
-            "展开挂历不能遮挡主题切换按钮"
+            "完整月历不能遮挡主题切换按钮：月历 \(calendarPanel.frame)，主题按钮 "
+                + "\(app.buttons["dashboard.appearanceToggle"].frame)"
         )
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Dashboard Expanded Calendar"
+        attachment.name = "Dashboard 820x560"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    func testDashboardLayoutAtDefaultWindow() throws {
+        let app = makeApplication()
+        app.launch()
+        app.activate()
+
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 3))
+        waitForFrameSize(CGSize(width: 1080, height: 700), of: window, timeout: 3)
+
+        let brand = app.buttons["dashboard.brand.toggle"]
+        let date = app.descendants(matching: .any)["dashboard.date"]
+        let englishCard = app.otherElements["dashboard.cardFrame.english"]
+        let japaneseCard = app.otherElements["dashboard.cardFrame.japanese"]
+        let calendar = app.otherElements["dashboard.calendarPanel"]
+        let recentPages = app.descendants(matching: .any)["dashboard.recentPages"]
+        for element in [brand, date, englishCard, japaneseCard, calendar, recentPages] {
+            XCTAssertTrue(element.waitForExistence(timeout: 3))
+        }
+
+        XCTAssertEqual(brand.frame.minX, englishCard.frame.minX, accuracy: 2)
+        XCTAssertEqual(date.frame.maxX, calendar.frame.maxX, accuracy: 2)
+        XCTAssertEqual(englishCard.frame.minY, japaneseCard.frame.minY, accuracy: 2)
+        XCTAssertLessThan(englishCard.frame.maxX, japaneseCard.frame.minX)
+        XCTAssertLessThan(japaneseCard.frame.maxX, calendar.frame.minX)
+        XCTAssertEqual(englishCard.frame.width, 320, accuracy: 2)
+        XCTAssertEqual(englishCard.frame.height, 176, accuracy: 2)
+        XCTAssertLessThanOrEqual(calendar.frame.height, calendar.frame.width * 1.35)
+        XCTAssertFalse(recentPages.frame.intersects(calendar.frame))
+
+        let mainContentFrame = [englishCard, japaneseCard, calendar, recentPages]
+            .map(\.frame)
+            .reduce(CGRect.null) { $0.union($1) }
+        XCTAssertEqual(
+            mainContentFrame.midY,
+            window.frame.midY,
+            accuracy: 35,
+            "首页主体应靠近顶部横线，避免横线与内容之间出现大块空白"
+        )
+
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Dashboard 1080x700"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    func testDashboardLayoutAtSpaciousWindow() throws {
+        let app = makeApplication(
+            additionalArguments: ["--ui-testing-spacious-window"]
+        )
+        app.launch()
+        app.activate()
+
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 3))
+        waitForFrameSize(CGSize(width: 1_320, height: 800), of: window, timeout: 3)
+
+        let englishCard = app.otherElements["dashboard.cardFrame.english"]
+        let japaneseCard = app.otherElements["dashboard.cardFrame.japanese"]
+        let calendar = app.otherElements["dashboard.calendarPanel"]
+        let recentPages = app.descendants(matching: .any)["dashboard.recentPages"]
+        for element in [englishCard, japaneseCard, calendar, recentPages] {
+            XCTAssertTrue(element.waitForExistence(timeout: 3))
+        }
+
+        XCTAssertGreaterThan(englishCard.frame.width, 320)
+        XCTAssertEqual(
+            englishCard.frame.width / englishCard.frame.height,
+            320 / 176,
+            accuracy: 0.03,
+            "大窗口中卡片放大时仍必须保持封面比例"
+        )
+        XCTAssertEqual(englishCard.frame.size, japaneseCard.frame.size)
+        XCTAssertGreaterThan(calendar.frame.width, 274)
+        XCTAssertGreaterThanOrEqual(
+            calendar.frame.height,
+            calendar.frame.width * 0.9,
+            "大窗口中月历内部应随列宽适度放大，不能显得过于扁小"
+        )
+        XCTAssertLessThanOrEqual(calendar.frame.height, calendar.frame.width * 1.2)
+
+        let mainContentFrame = [englishCard, japaneseCard, calendar, recentPages]
+            .map(\.frame)
+            .reduce(CGRect.null) { $0.union($1) }
+        XCTAssertLessThan(
+            mainContentFrame.midY,
+            window.frame.midY,
+            "大窗口中主体应主动靠近顶部横线，而不是在剩余高度中居中"
+        )
+        XCTAssertFalse(recentPages.frame.intersects(calendar.frame))
+
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Dashboard 1320x800"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
@@ -1334,6 +1597,29 @@ final class EgangnalUITests: XCTestCase {
         app.activate()
         XCTAssertTrue(element.exists)
         element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+    }
+
+    /// 坐标点击不会自动滚动，落在可视范围外的控件必须先滚进来。
+    /// 滚轮方向在不同环境下可能相反，因此按"元素是否朝目标移动"自适应。
+    @MainActor
+    private func scrollToReveal(_ element: XCUIElement, in app: XCUIApplication) {
+        let window = app.windows.firstMatch
+        let scrollView = app.scrollViews.firstMatch
+        guard scrollView.exists else { return }
+        var direction: CGFloat = -1
+        for _ in 0..<12 {
+            let visibleArea = window.frame.insetBy(dx: 0, dy: 24)
+            if visibleArea.contains(element.frame) { return }
+            let before = element.frame.midY
+            scrollView.scroll(byDeltaX: 0, deltaY: direction * 160)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+            let after = element.frame.midY
+            let shouldMoveUp = before > window.frame.midY
+            let movedTowardsTarget = shouldMoveUp ? after < before : after > before
+            if !movedTowardsTarget {
+                direction = -direction
+            }
+        }
     }
 
     @MainActor
@@ -1511,8 +1797,16 @@ final class EgangnalUITests: XCTestCase {
         let path = app.staticTexts["settings.exportDirectory.path"]
         let chooseDirectory = app.buttons["settings.exportDirectory.choose"]
         let artworkToggle = app.switches["settings.personalization.cardArtwork"]
-        let gridToggle = app.switches["settings.personalization.gridBackground"]
-        let controls = [title, path, chooseDirectory, artworkToggle, gridToggle]
+        let dashboardBackground = app.radioGroups[
+            "settings.personalization.dashboardBackground"
+        ]
+        let controls = [
+            title,
+            path,
+            chooseDirectory,
+            artworkToggle,
+            dashboardBackground
+        ]
 
         XCTAssertTrue(title.waitForExistence(timeout: 3))
         for control in controls {
@@ -1523,7 +1817,11 @@ final class EgangnalUITests: XCTestCase {
             )
         }
         XCTAssertFalse(path.frame.intersects(chooseDirectory.frame))
-        XCTAssertLessThan(artworkToggle.frame.minY, gridToggle.frame.minY)
+        XCTAssertLessThan(artworkToggle.frame.minY, dashboardBackground.frame.minY)
+        // 功能页各自的背景在下方分区，最小窗口下可能在折叠线以下，只要求存在且顺序在首页背景之后。
+        let wordBookBackground = app.radioGroups["settings.background.wordBook"]
+        XCTAssertTrue(wordBookBackground.exists)
+        XCTAssertLessThan(dashboardBackground.frame.minY, wordBookBackground.frame.minY)
 
         keepScreenshot(of: app, named: screenshotName)
     }
@@ -1533,6 +1831,7 @@ final class EgangnalUITests: XCTestCase {
         let actual = [
             app.staticTexts["dashboard.title"].frame,
             app.buttons["dashboard.open.japanese"].frame,
+            app.descendants(matching: .any)["dashboard.recentPages"].frame,
             app.buttons["dashboard.settings"].frame,
             app.otherElements["dashboard.calendarPanel"].frame,
             app.buttons["dashboard.appearanceToggle"].frame

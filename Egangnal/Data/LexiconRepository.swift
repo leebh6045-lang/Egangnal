@@ -16,15 +16,15 @@ enum LexiconRepositoryError: Error, Equatable, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .resourceMissing:
-            "词库数据缺失，暂时无法浏览词库。"
+            "集词阁数据缺失，暂时无法浏览。"
         case let .openFailed(message):
-            "词库打开失败：\(message)"
+            "集词阁打开失败：\(message)"
         case .schemaMissing:
-            "词库缺少版本信息，无法确认数据结构。"
+            "集词阁缺少版本信息，无法确认数据结构。"
         case let .schemaUnsupported(found, expected):
-            "词库版本不兼容：当前 \(found ?? "未知")，需要 \(expected)。"
+            "集词阁版本不兼容：当前 \(found ?? "未知")，需要 \(expected)。"
         case let .queryFailed(message):
-            "词库查询失败：\(message)"
+            "集词阁查询失败：\(message)"
         }
     }
 }

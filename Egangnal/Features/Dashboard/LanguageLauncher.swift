@@ -12,16 +12,31 @@ struct LanguageLauncher: View {
     @State private var hoveredSpace: LanguageSpace?
 
     let availableWidth: CGFloat
+    let isCompact: Bool
     let openLanguage: (LanguageSpace) -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: AppTheme.panelSpacing) {
-            ForEach(orderedSpaces) { space in
-                languageButton(for: space)
+        Group {
+            if isCompact {
+                VStack(alignment: .center, spacing: Metrics.compactSpacing) {
+                    languageCards
+                }
+            } else {
+                HStack(alignment: .top, spacing: AppTheme.panelSpacing) {
+                    languageCards
+                }
             }
         }
+        .frame(width: availableWidth, alignment: isCompact ? .top : .topLeading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dashboard.languageLauncher")
+    }
+
+    @ViewBuilder
+    private var languageCards: some View {
+        ForEach(orderedSpaces) { space in
+            languageButton(for: space)
+        }
     }
 
     private func languageButton(for space: LanguageSpace) -> some View {
@@ -31,12 +46,26 @@ struct LanguageLauncher: View {
             languageCard(for: space)
         }
         .buttonStyle(.plain)
+        .frame(
+            width: cardWidth,
+            height: cardHeight,
+            alignment: .topLeading
+        )
+        .help("进入\(space.title)学习空间")
+        .accessibilityLabel("\(space.title)，\(space.nativeTitle)")
+        .accessibilityIdentifier("dashboard.open.\(space.rawValue)")
+        .overlay {
+            Rectangle()
+                .fill(.clear)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(space.title)卡片视觉边界")
+                .accessibilityIdentifier("dashboard.cardFrame.\(space.rawValue)")
+                .allowsHitTesting(false)
+        }
         .onHover { isHovering in
             hoveredSpace = isHovering ? space : nil
         }
         .animation(.easeOut(duration: 0.14), value: hoveredSpace)
-        .help("进入\(space.title)学习空间")
-        .accessibilityIdentifier("dashboard.open.\(space.rawValue)")
     }
 
     private func languageCard(for space: LanguageSpace) -> some View {
@@ -56,7 +85,7 @@ struct LanguageLauncher: View {
         .padding(18)
         .frame(
             width: cardWidth,
-            height: AppTheme.launcherCardHeight,
+            height: cardHeight,
             alignment: .topLeading
         )
         .background {
@@ -79,17 +108,28 @@ struct LanguageLauncher: View {
         .shadow(color: palette.panelShadow, radius: 12, y: 5)
     }
 
-    private var cardWidth: CGFloat {
-        let totalSpacing = AppTheme.panelSpacing
-            * CGFloat(max(orderedSpaces.count - 1, 0))
-        let proposedWidth = (availableWidth - totalSpacing)
-            / CGFloat(orderedSpaces.count)
-        return min(max(proposedWidth, 190), AppTheme.launcherCardMaxWidth)
-    }
-
     // 首页按使用习惯展示英语在左、日语在右，不改变全局语言枚举顺序。
     private var orderedSpaces: [LanguageSpace] {
         [.english, .japanese]
+    }
+
+    private var cardWidth: CGFloat {
+        guard !isCompact else { return Metrics.compactCardWidth }
+        return (availableWidth - AppTheme.panelSpacing) / 2
+    }
+
+    private var cardHeight: CGFloat {
+        guard !isCompact else { return Metrics.compactCardHeight }
+        return cardWidth / Metrics.cardAspectRatio
+    }
+}
+
+private extension LanguageLauncher {
+    enum Metrics {
+        static let compactCardWidth: CGFloat = 320
+        static let compactCardHeight: CGFloat = 154
+        static let compactSpacing: CGFloat = 10
+        static let cardAspectRatio: CGFloat = 320 / 176
     }
 }
 

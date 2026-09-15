@@ -32,6 +32,15 @@ final class EgangnalUITestsLaunchTests: XCTestCase {
     }
 
     @MainActor
+    func testLaunchWarmTheme() throws {
+        try verifyLaunch(
+            additionalArguments: ["--ui-testing-warm-theme"],
+            expectedAppearance: "暖纸主题",
+            attachmentName: "Launch Warm Theme"
+        )
+    }
+
+    @MainActor
     private func verifyLaunch(
         additionalArguments: [String],
         expectedAppearance: String,

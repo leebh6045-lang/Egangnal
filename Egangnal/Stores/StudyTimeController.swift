@@ -478,6 +478,14 @@ final class StudyTimeController {
         )
     }
 
+    /// 首页只展示某个本地日期的英日合计投入，不改变各语言长期累计的独立语义。
+    func dailyStudiedSeconds(for date: Date) -> Double {
+        let dateKey = StudyDateKey(date: date, calendar: calendar)
+        return DailyStudyFeedbackStatus.totalStudiedSeconds(
+            from: dailyActivities.filter { $0.dateKey == dateKey }
+        )
+    }
+
     private static func makeDailyIncrements(
         from startDate: Date,
         to endDate: Date,

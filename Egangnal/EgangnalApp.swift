@@ -27,6 +27,7 @@ struct EgangnalApp: App {
                 appearanceStore: dependencies.appearanceStore,
                 settingsStore: dependencies.settingsStore,
                 workspaceNavigationStore: dependencies.workspaceNavigationStore,
+                dashboardStore: dependencies.dashboardStore,
                 wordQuizSoundPlayer: dependencies.wordQuizSoundPlayer,
                 wordBookRepository: dependencies.wordBookRepository,
                 lexiconRepository: dependencies.lexiconRepository,

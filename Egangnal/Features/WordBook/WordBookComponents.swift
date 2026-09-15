@@ -9,6 +9,7 @@ struct WordBookEntryRow: View {
     @Environment(\.appPalette) private var palette
 
     let entry: WordBookEntrySnapshot
+    let arrangement: EntryFieldArrangement
     let frequencyColor: Color
     let emphasizesFrequency: Bool
     let isEditing: Bool
@@ -20,17 +21,26 @@ struct WordBookEntryRow: View {
     let delete: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            EqualFieldsLayout(spacing: AppTheme.wordBookFieldSpacing) {
+        HStack(alignment: arrangement.controlsAlignment, spacing: 14) {
+            EntryFieldsLayout(
+                spacing: AppTheme.wordBookFieldSpacing,
+                proportions: arrangement.proportions,
+                alignsBaselines: arrangement.alignsBaselines
+            ) {
                 maskedTextButton(
                     text: entry.term,
                     isVisible: isWordVisible,
                     visibleLabel: wordAccessibilityLabel,
                     hiddenLabel: "单词已隐藏",
                     accessibilityIdentifier: "wordBook.entry.\(entry.id.uuidString).word",
+                    decoratesWithMarker: showsMarker,
                     action: toggleWord
                 )
-                .font(.system(size: AppTheme.wordBookEntryFontSize, weight: .semibold))
+                .font(.system(
+                    size: AppTheme.entryTermFontSize,
+                    weight: .semibold,
+                    design: arrangement.fontDesign
+                ))
                 .foregroundStyle(termColor)
 
                 maskedTextButton(
@@ -39,12 +49,13 @@ struct WordBookEntryRow: View {
                     visibleLabel: entry.meaning,
                     hiddenLabel: "释义已隐藏",
                     accessibilityIdentifier: "wordBook.entry.\(entry.id.uuidString).meaning",
+                    decoratesWithMarker: false,
                     action: toggleMeaning
                 )
-                .font(.system(size: AppTheme.wordBookEntryFontSize))
+                .font(.system(size: AppTheme.entryGlossFontSize, design: arrangement.fontDesign))
                 .foregroundStyle(palette.primaryText)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: arrangement.frameAlignment)
 
             if isEditing {
                 HStack(spacing: 8) {
@@ -68,8 +79,8 @@ struct WordBookEntryRow: View {
         }
         .frame(
             maxWidth: .infinity,
-            minHeight: AppTheme.wordBookEntryMinHeight,
-            alignment: .center
+            minHeight: arrangement.minHeight,
+            alignment: arrangement.frameAlignment
         )
         .contentShape(.rect)
         .accessibilityElement(children: .contain)
@@ -82,18 +93,29 @@ struct WordBookEntryRow: View {
         visibleLabel: String,
         hiddenLabel: String,
         accessibilityIdentifier: String,
+        decoratesWithMarker: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Text(text)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(arrangement.textAlignment)
+                .lineLimit(arrangement.lineLimit)
+                .truncationMode(.tail)
                 .opacity(0)
                 // 遮盖层复用原文字尺寸，切换显隐时不改变网格布局。
                 .overlay {
                     if isVisible {
                         Text(text)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity, alignment: .center)
+                            .multilineTextAlignment(arrangement.textAlignment)
+                            .lineLimit(arrangement.lineLimit)
+                            .truncationMode(.tail)
+                            // 荧光笔贴着文字自身的宽度画，而不是整个字段，才像"划过这个词"。
+                            .background {
+                                if decoratesWithMarker {
+                                    WordBookMarkerStroke()
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: arrangement.frameAlignment)
                     } else {
                         RoundedRectangle(cornerRadius: AppTheme.wordBookMaskCornerRadius)
                             .fill(palette.panelRaised)
@@ -105,7 +127,7 @@ struct WordBookEntryRow: View {
                             }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, alignment: arrangement.frameAlignment)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isVisible ? visibleLabel : hiddenLabel)
@@ -113,14 +135,38 @@ struct WordBookEntryRow: View {
         .accessibilityIdentifier(accessibilityIdentifier)
     }
 
+    private var isEmphasized: Bool {
+        emphasizesFrequency && entry.isHighFrequency
+    }
+
+    private var showsMarker: Bool {
+        isEmphasized && arrangement.emphasizesFrequencyWithMarker
+    }
+
+    /// 荧光笔样式下单词保持正文色，强调完全交给色带。
     private var termColor: Color {
-        emphasizesFrequency && entry.isHighFrequency ? frequencyColor : palette.primaryText
+        isEmphasized && !arrangement.emphasizesFrequencyWithMarker ? frequencyColor : palette.primaryText
     }
 
     private var wordAccessibilityLabel: String {
-        emphasizesFrequency && entry.isHighFrequency
-            ? "\(entry.term)，高频词"
-            : entry.term
+        isEmphasized ? "\(entry.term)，高频词" : entry.term
+    }
+}
+
+/// 一笔略斜的荧光笔色带，压在文字下半部。
+private struct WordBookMarkerStroke: View {
+    @Environment(\.appPalette) private var palette
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(palette.markerHighlight)
+            .frame(height: AppTheme.journalMarkerHeight)
+            .padding(.horizontal, -AppTheme.journalMarkerHorizontalBleed)
+            .rotationEffect(.degrees(AppTheme.journalMarkerSkewDegrees))
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .offset(y: -AppTheme.journalMarkerBottomOffset)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }
 

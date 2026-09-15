@@ -27,7 +27,7 @@ final class LexiconUITests: XCTestCase {
             app.staticTexts["lexicon.title"].waitForExistence(timeout: 5),
             "进入学习资料应显示词库页面"
         )
-        XCTAssertEqual(app.staticTexts["lexicon.title"].label, "英语词库")
+        XCTAssertEqual(app.staticTexts["lexicon.title"].label, "英语集词阁")
 
         let resultCount = app.staticTexts["lexicon.resultCount"]
         XCTAssertTrue(resultCount.waitForExistence(timeout: 5))

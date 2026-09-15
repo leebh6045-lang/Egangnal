@@ -11,6 +11,7 @@ struct DashboardView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let appearanceStore: AppearanceStore
+    let dashboardStore: DashboardStore
     let studyTimeController: StudyTimeController
     let openLanguage: (LanguageSpace) -> Void
     let openSettings: () -> Void
@@ -24,18 +25,16 @@ struct DashboardView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                WorkspaceBackground()
+                WorkspaceBackground(page: .dashboard)
 
                 dashboardContent(in: proxy.size)
-                    .padding(.horizontal, AppTheme.contentPadding)
-                    .padding(.top, AppTheme.dashboardTopPadding)
-                    .padding(.bottom, AppTheme.contentPadding)
 
                 dashboardControls(in: proxy.size)
-                    .padding(AppTheme.contentPadding)
+                    .padding(DashboardMetrics(size: proxy.size).controlInset)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
 
             }
+            .onAppear(perform: dashboardStore.reload)
             .overlay {
                 if let rippleSnapshot {
                     ThemeRippleOverlay(
@@ -44,7 +43,7 @@ struct DashboardView: View {
                         progress: rippleProgress,
                         size: rippleSnapshot.size
                     )
-                    // 波纹只负责绘制，并覆盖透明标题栏，不参与主界面布局。
+                    // 波纹只负责绘制并覆盖透明标题栏，不参与主界面布局。
                     .ignoresSafeArea()
                 }
             }
@@ -52,71 +51,101 @@ struct DashboardView: View {
     }
 
     private func dashboardContent(in size: CGSize) -> some View {
-        ZStack(alignment: .topLeading) {
-            headerRow
+        let metrics = DashboardMetrics(size: size)
 
-            launcherRow(in: size)
-                .frame(width: launcherColumnWidth(in: size), alignment: .topLeading)
-                // 入口使用独立坐标，挂历展开时不能参与其纵向排版。
-                .offset(y: AppTheme.dashboardLauncherTopOffset)
+        return VStack(spacing: 0) {
+            headerRow
+                .frame(height: metrics.headerHeight, alignment: .top)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(palette.border.opacity(0.55))
+                        .frame(height: 1)
+                }
+
+            HStack(alignment: .top, spacing: metrics.columnSpacing) {
+                launcherColumn(
+                    availableWidth: metrics.launcherColumnWidth,
+                    isCompact: metrics.isCompact
+                )
+                .frame(width: metrics.launcherColumnWidth, alignment: .topLeading)
+                .fixedSize(horizontal: false, vertical: true)
+
+                CalendarPanel(
+                    studyTimeController: studyTimeController,
+                    isCompact: metrics.isCompact
+                )
+                .frame(width: metrics.calendarWidth)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, metrics.mainContentTopInset)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, metrics.horizontalPadding)
+        .padding(.top, metrics.topPadding)
+        .padding(.bottom, metrics.bottomPadding)
     }
 
     private var headerRow: some View {
-        HStack(alignment: .top, spacing: AppTheme.dashboardHeaderSpacing) {
-            VStack(alignment: .leading, spacing: 18) {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            HStack(alignment: .top, spacing: 24) {
                 brandWatermark
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text("今天想从哪里开始？")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(palette.primaryText)
-                    .accessibilityAddTraits(.isHeader)
-                    .accessibilityIdentifier("dashboard.title")
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text(context.date, format: .dateTime.month().day())
+                        .font(.system(size: 29, weight: .medium, design: .serif))
+                        .foregroundStyle(palette.primaryText)
+                    Text(context.date, format: .dateTime.weekday(.wide))
+                        .font(.subheadline)
+                        .foregroundStyle(palette.tertiaryText)
+                }
+                .environment(\.locale, Locale(identifier: "zh_Hans_CN"))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("dashboard.date")
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            CalendarPanel(studyTimeController: studyTimeController)
-                .frame(width: AppTheme.dashboardCalendarWidth)
         }
-        .frame(maxWidth: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    private func launcherRow(in size: CGSize) -> some View {
-        LanguageLauncher(
-            availableWidth: launcherColumnWidth(in: size),
-            openLanguage: openLanguage
-        )
-    }
+    private func launcherColumn(
+        availableWidth: CGFloat,
+        isCompact: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("今天想学点什么？")
+                .font(.system(.title3, design: .serif).weight(.medium))
+                .foregroundStyle(palette.secondaryText)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("dashboard.title")
 
-    private func launcherColumnWidth(in size: CGSize) -> CGFloat {
-        max(
-            0,
-            size.width
-                - AppTheme.contentPadding * 2
-                - AppTheme.dashboardCalendarWidth
-                - AppTheme.dashboardHeaderSpacing
-        )
+            LanguageLauncher(
+                availableWidth: availableWidth,
+                isCompact: isCompact,
+                openLanguage: openLanguage
+            )
+            .padding(.top, 12)
+
+            DashboardRecentPages(
+                state: dashboardStore.state,
+                availableWidth: availableWidth
+            )
+            .padding(.top, isCompact ? 10 : 16)
+        }
     }
 
     private var brandWatermark: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            BrandWordmark(
-                isEnabled: !isChangingAppearance,
-                onAnimationStateChanged: { isAnimatingBrand = $0 }
-            )
-            Text("属于自己的语言学习空间")
-                .font(.subheadline)
-                .foregroundStyle(palette.secondaryText)
-                .accessibilityIdentifier("dashboard.brand.subtitle")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        BrandWordmark(
+            isEnabled: !isChangingAppearance,
+            onAnimationStateChanged: { isAnimatingBrand = $0 }
+        )
     }
 
     private func toggleCenter(in size: CGSize) -> CGPoint {
-        CGPoint(
-            x: size.width - AppTheme.contentPadding - AppTheme.toggleSize / 2,
-            y: size.height - AppTheme.contentPadding - AppTheme.toggleSize / 2
+        let inset = DashboardMetrics(size: size).controlInset
+        return CGPoint(
+            x: size.width - inset - AppTheme.toggleSize / 2,
+            y: size.height - inset - AppTheme.toggleSize / 2
         )
     }
 
@@ -157,7 +186,7 @@ struct DashboardView: View {
 
         guard !reduceMotion,
               let snapshot = WindowSnapshotter.captureKeyWindowContent() else {
-            appearanceStore.toggle()
+            appearanceStore.cycle()
             return
         }
 
@@ -170,7 +199,7 @@ struct DashboardView: View {
         )
         rippleProgress = 0
         withTransaction(Transaction(animation: nil)) {
-            appearanceStore.toggle()
+            appearanceStore.cycle()
         }
 
         withAnimation(.easeInOut(duration: AppTheme.rippleDuration)) {
@@ -188,9 +217,48 @@ struct DashboardView: View {
 #Preview {
     DashboardView(
         appearanceStore: .preview,
+        dashboardStore: .preview,
         studyTimeController: .preview,
         openLanguage: { _ in },
         openSettings: {}
     )
         .frame(width: 1080, height: 700)
+}
+
+/// 首页在默认与最小窗口间只有两套经过验收的几何，
+/// 避免视图里散落补偿偏移。
+private struct DashboardMetrics {
+    private let size: CGSize
+    let isCompact: Bool
+
+    init(size: CGSize) {
+        self.size = size
+        isCompact = size.width < 1_000 || size.height < 650
+    }
+
+    var horizontalPadding: CGFloat {
+        max((size.width - contentWidth) / 2, minimumHorizontalPadding)
+    }
+    var topPadding: CGFloat { isCompact ? 40 : 46 }
+    var bottomPadding: CGFloat { isCompact ? 12 : 28 }
+    var controlInset: CGFloat { isCompact ? 16 : 28 }
+    var headerHeight: CGFloat { isCompact ? 86 : 108 }
+    var mainContentTopInset: CGFloat { isCompact ? 10 : 52 }
+    var columnSpacing: CGFloat { isCompact ? 28 : 30 }
+    var calendarWidth: CGFloat {
+        guard !isCompact else { return 260 }
+        return min(max(contentWidth * 4 / 15, 274), 320)
+    }
+
+    var launcherColumnWidth: CGFloat {
+        contentWidth - calendarWidth - columnSpacing
+    }
+
+    private var contentWidth: CGFloat {
+        min(size.width - minimumHorizontalPadding * 2, isCompact ? 752 : 1_200)
+    }
+
+    private var minimumHorizontalPadding: CGFloat {
+        isCompact ? 34 : 58
+    }
 }

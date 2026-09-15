@@ -191,10 +191,10 @@ final class LexiconCatalogStore {
                     state: .managedInWordBook,
                     collectedDates: []
                 )
-                showNotice("已移除词库收藏；「\(entry.term)」另有文档导入记录，仍在单词本中。")
+                showNotice("已移除集词阁收藏；「\(entry.term)」另有文档导入记录，仍在单词本中。")
             case .notCollected:
                 collectionInfo[key] = .notInWordBook
-                showNotice("「\(entry.term)」没有词库收藏记录。")
+                showNotice("「\(entry.term)」没有集词阁收藏记录。")
             case .managedInWordBook:
                 collectionInfo[key] = LexiconCollectionInfo(
                     state: .managedInWordBook,

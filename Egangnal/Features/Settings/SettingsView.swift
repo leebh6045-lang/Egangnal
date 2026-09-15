@@ -9,6 +9,7 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @Environment(\.appPalette) private var palette
 
+    let appearanceStore: AppearanceStore
     let settingsStore: AppSettingsStore
     let wordQuizSoundPlayer: any WordQuizSoundPlaying
     let appUpdateController: any AppUpdating
@@ -19,7 +20,8 @@ struct SettingsView: View {
 
     var body: some View {
         ZStack {
-            WorkspaceBackground()
+            // 设置页是根页面，与首页共用一份背景偏好，不属于任何功能页。
+            WorkspaceBackground(page: .dashboard)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
@@ -60,23 +62,19 @@ struct SettingsView: View {
         }
     }
 
+    /// 分区顺序：先是整个应用的偏好，再按页面逐一列出，每个功能页的选项只出现在自己的分区里。
     private var settingsContent: some View {
         VStack(alignment: .leading, spacing: 26) {
             exportSection
-
-            Divider()
-                .overlay(palette.border.opacity(0.65))
-
+            sectionDivider
             personalizationSection
-
-            Divider()
-                .overlay(palette.border.opacity(0.65))
-
-            quizFeedbackSection
-
-            Divider()
-                .overlay(palette.border.opacity(0.65))
-
+            sectionDivider
+            wordBookSection
+            sectionDivider
+            lexiconSection
+            sectionDivider
+            wordQuizSection
+            sectionDivider
             updateSection
         }
         .frame(maxWidth: 760, alignment: .leading)
@@ -84,11 +82,14 @@ struct SettingsView: View {
         .workspacePanel()
     }
 
+    private var sectionDivider: some View {
+        Divider()
+            .overlay(palette.border.opacity(0.65))
+    }
+
     private var exportSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("模板导出")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(palette.primaryText)
+            sectionTitle("模板导出")
 
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 5) {
@@ -143,46 +144,156 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - 应用与首页
+
     private var personalizationSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("个性化")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(palette.primaryText)
+            sectionTitle("个性化")
+
+            choiceRow("主题", identifier: "settings.appearance", selection: appearanceBinding)
 
             Toggle(
                 "语言卡片封面图",
                 isOn: Binding(
                     get: { settingsStore.showsLanguageCardArtwork },
-                    set: { isEnabled in
-                        settingsStore.setLanguageCardArtwork(isEnabled)
-                    }
+                    set: { settingsStore.setLanguageCardArtwork($0) }
                 )
             )
             .toggleStyle(.switch)
             .accessibilityIdentifier("settings.personalization.cardArtwork")
 
-            Toggle(
-                "页面细网格背景",
-                isOn: Binding(
-                    get: { settingsStore.showsGridBackground },
-                    set: { isEnabled in
-                        settingsStore.setGridBackground(isEnabled)
-                    }
-                )
+            choiceRow(
+                "首页背景",
+                identifier: "settings.personalization.dashboardBackground",
+                selection: backgroundBinding(for: .dashboard)
             )
-            .toggleStyle(.switch)
-            .accessibilityIdentifier("settings.personalization.gridBackground")
+
+            sectionCaption("首页与设置页共用这一份背景；单词本、集词阁和单词刷在下方各自设置，互不影响。")
         }
         .foregroundStyle(palette.primaryText)
     }
 
-    private var quizFeedbackSection: some View {
+    // MARK: - 单词本
+
+    private var wordBookSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            sectionTitle("单词本")
+
+            choiceRow(
+                "排版",
+                identifier: "settings.layout.wordBook",
+                selection: Binding(
+                    get: { settingsStore.wordBook.layout },
+                    set: { settingsStore.setWordBookLayout($0) }
+                )
+            )
+
+            choiceRow(
+                "横格线样式",
+                identifier: "settings.layout.wordBookRuledLineStyle",
+                selection: Binding(
+                    get: { settingsStore.wordBook.ruledLineStyle },
+                    set: { settingsStore.setWordBookRuledLineStyle($0) }
+                )
+            )
+            // 不用横格本时线条样式没有可见效果，禁用而不是隐藏：用户仍能看到选项存在。
+            .disabled(settingsStore.wordBook.layout != .ruled)
+
+            choiceRow(
+                "背景",
+                identifier: "settings.background.wordBook",
+                selection: backgroundBinding(for: .wordBook)
+            )
+
+            Toggle(
+                "台灯光",
+                isOn: Binding(
+                    get: { settingsStore.wordBook.showsLamp },
+                    set: { settingsStore.setWordBookLamp($0) }
+                )
+            )
+            .toggleStyle(.switch)
+            .accessibilityIdentifier("settings.atmosphere.wordBookLamp")
+
+            sectionCaption("横格本把词条排成纸上的行，线条样式决定横格线如何与背景区分；手帐按日期分组，用荧光笔标记高频词。台灯光在左上角打一片暖光。")
+        }
+        .foregroundStyle(palette.primaryText)
+    }
+
+    // MARK: - 集词阁
+
+    private var lexiconSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            sectionTitle("集词阁")
+
+            choiceRow(
+                "排版",
+                identifier: "settings.layout.lexicon",
+                selection: Binding(
+                    get: { settingsStore.lexicon.layout },
+                    set: { settingsStore.setLexiconLayout($0) }
+                )
+            )
+
+            choiceRow(
+                "横格线样式",
+                identifier: "settings.layout.lexiconRuledLineStyle",
+                selection: Binding(
+                    get: { settingsStore.lexicon.ruledLineStyle },
+                    set: { settingsStore.setLexiconRuledLineStyle($0) }
+                )
+            )
+            .disabled(settingsStore.lexicon.layout != .ruled)
+
+            choiceRow(
+                "背景",
+                identifier: "settings.background.lexicon",
+                selection: backgroundBinding(for: .lexicon)
+            )
+
+            Toggle(
+                "页眉词",
+                isOn: Binding(
+                    get: { settingsStore.lexicon.showsGuideWords },
+                    set: { settingsStore.setLexiconGuideWords($0) }
+                )
+            )
+            .toggleStyle(.switch)
+            .accessibilityIdentifier("settings.atmosphere.lexiconGuideWords")
+
+            Toggle(
+                "藏书章",
+                isOn: Binding(
+                    get: { settingsStore.lexicon.showsStamp },
+                    set: { settingsStore.setLexiconStamp($0) }
+                )
+            )
+            .toggleStyle(.switch)
+            .accessibilityIdentifier("settings.atmosphere.lexiconStamp")
+
+            sectionCaption("页眉词标出本页的首尾词条，藏书章是右下角的一枚水印。")
+        }
+        .foregroundStyle(palette.primaryText)
+    }
+
+    // MARK: - 单词刷
+
+    private var wordQuizSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("答题反馈")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(palette.primaryText)
+            sectionTitle("单词刷")
+
+            choiceRow(
+                "背景",
+                identifier: "settings.background.wordQuiz",
+                selection: backgroundBinding(for: .wordQuiz)
+            )
 
             HStack(spacing: 14) {
+                Text("答题音效")
+                    .font(.body)
+                    .foregroundStyle(palette.primaryText)
+                    .frame(width: Self.choiceLabelWidth, alignment: .leading)
+
                 Picker("答题音效", selection: soundEffectBinding) {
                     ForEach(WordQuizSoundEffect.allCases) { effect in
                         Text(effect.title).tag(effect)
@@ -206,13 +317,14 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.wordQuiz.soundPreview")
             }
         }
+        .foregroundStyle(palette.primaryText)
     }
+
+    // MARK: - 更新
 
     private var updateSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("应用更新")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(palette.primaryText)
+            sectionTitle("应用更新")
 
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -242,6 +354,61 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.appUpdate.check")
             }
         }
+    }
+
+    // MARK: - 共享控件
+
+    private static let choiceLabelWidth: CGFloat = 96
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(palette.primaryText)
+    }
+
+    private func sectionCaption(_ text: String) -> some View {
+        Text(text)
+            .font(.callout)
+            .foregroundStyle(palette.secondaryText)
+    }
+
+    /// 标题在左、分段选择器在右的一行，供主题、排版、背景这类少量互斥选项复用。
+    private func choiceRow<Choice: SettingsChoice>(
+        _ title: String,
+        identifier: String,
+        selection: Binding<Choice>
+    ) -> some View {
+        HStack(spacing: 14) {
+            Text(title)
+                .font(.body)
+                .foregroundStyle(palette.primaryText)
+                .frame(width: Self.choiceLabelWidth, alignment: .leading)
+
+            Picker(title, selection: selection) {
+                ForEach(Choice.allCases) { choice in
+                    Text(choice.title).tag(choice)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .controlSize(.large)
+            .frame(maxWidth: 360, alignment: .leading)
+            .accessibilityIdentifier(identifier)
+        }
+    }
+
+    private func backgroundBinding(for page: PageBackgroundScope) -> Binding<PageBackgroundPattern> {
+        Binding(
+            get: { settingsStore.personalization.backgroundPattern(for: page) },
+            set: { settingsStore.setBackgroundPattern($0, for: page) }
+        )
+    }
+
+    private var appearanceBinding: Binding<AppAppearance> {
+        Binding(
+            get: { appearanceStore.mode },
+            set: { appearanceStore.select($0) }
+        )
     }
 
     private var soundEffectBinding: Binding<WordQuizSoundEffect> {
@@ -296,8 +463,21 @@ private struct SettingsNotice {
     }
 }
 
+/// 设置页里用分段控件表达的少量互斥选项：能枚举、有标题、可作标签。
+protocol SettingsChoice: CaseIterable, Identifiable, Hashable
+where AllCases: RandomAccessCollection {
+    var title: String { get }
+}
+
+extension AppAppearance: SettingsChoice {}
+extension WordBookLayoutStyle: SettingsChoice {}
+extension LexiconLayoutStyle: SettingsChoice {}
+extension RuledLineStyle: SettingsChoice {}
+extension PageBackgroundPattern: SettingsChoice {}
+
 #Preview {
     SettingsView(
+        appearanceStore: .preview,
         settingsStore: .preview,
         wordQuizSoundPlayer: SilentWordQuizSoundPlayer(),
         appUpdateController: DisabledAppUpdateController(),

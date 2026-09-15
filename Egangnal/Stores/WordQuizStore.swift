@@ -21,7 +21,7 @@ enum WordQuizRangeMode: String, CaseIterable, Identifiable, Sendable {
         case .date:
             "日期"
         case .lexicon:
-            "词库"
+            "集词阁"
         }
     }
 }
@@ -84,7 +84,7 @@ final class WordQuizStore {
         guard isLexiconScoped else {
             return "单词本 · \(rangeMode.title)"
         }
-        return "词库 · \(lexiconLevel?.title ?? "全部")"
+        return "集词阁 · \(lexiconLevel?.title ?? "全部")"
     }
 
     /// 这次测试是否考公共词库。为真时设置区显示等级选择器而不是日期选择器。
@@ -231,7 +231,7 @@ final class WordQuizStore {
         guard let lexiconCandidateSource else {
             lexiconCandidates = []
             targetLexiconCandidates = []
-            notice = "词库范围暂不可用。"
+            notice = "集词阁范围暂不可用。"
             return
         }
         do {
@@ -243,7 +243,7 @@ final class WordQuizStore {
             lexiconCandidates = []
             targetLexiconCandidates = []
             notice = (error as? LocalizedError)?.errorDescription
-                ?? "读取词库失败：\(error.localizedDescription)"
+                ?? "读取集词阁失败：\(error.localizedDescription)"
         }
     }
 

@@ -14,6 +14,7 @@ struct AppDependencies {
     let appearanceStore: AppearanceStore
     let settingsStore: AppSettingsStore
     let workspaceNavigationStore: WorkspaceNavigationStore
+    let dashboardStore: DashboardStore
     let wordQuizSoundPlayer: any WordQuizSoundPlaying
     let wordBookRepository: any WordBookRepository
     let lexiconRepository: any LexiconRepository
@@ -27,9 +28,13 @@ struct AppDependencies {
     static func live() -> AppDependencies {
         let arguments = ProcessInfo.processInfo.arguments
         let isUITesting = arguments.contains("--ui-testing")
-        let defaultAppearance: AppAppearance = arguments.contains("--ui-testing-light-theme")
-            ? .light
-            : .dark
+        let defaultAppearance: AppAppearance = if arguments.contains("--ui-testing-light-theme") {
+            .light
+        } else if arguments.contains("--ui-testing-warm-theme") {
+            .warm
+        } else {
+            .dark
+        }
         let appearanceStore = AppearanceStore(
             preferences: isUITesting ? nil : UserDefaults.standard,
             defaultMode: defaultAppearance
@@ -179,6 +184,7 @@ struct AppDependencies {
             appearanceStore: appearanceStore,
             settingsStore: settingsStore,
             workspaceNavigationStore: workspaceNavigationStore,
+            dashboardStore: DashboardStore(repository: wordBookRepository),
             wordQuizSoundPlayer: wordQuizSoundPlayer,
             wordBookRepository: wordBookRepository,
             lexiconRepository: lexiconRepository,

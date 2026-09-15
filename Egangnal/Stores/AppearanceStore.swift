@@ -35,9 +35,15 @@ final class AppearanceStore {
         }
     }
 
-    func toggle() {
-        mode = mode.toggled
-        preferences?.set(mode.rawValue, forKey: Self.storageKey)
+    /// 首页按钮：按固定顺序切到下一套主题。
+    func cycle() {
+        select(mode.next)
+    }
+
+    /// 设置页：直接选定某一套主题。
+    func select(_ newMode: AppAppearance) {
+        mode = newMode
+        preferences?.set(newMode.rawValue, forKey: Self.storageKey)
     }
 }
 

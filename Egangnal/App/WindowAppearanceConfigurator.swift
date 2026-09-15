@@ -57,7 +57,7 @@ final class WindowConfigurationView: NSView {
         window.styleMask.insert(.fullSizeContentView)
         window.isMovableByWindowBackground = true
         window.appearance = NSAppearance(
-            named: appAppearance == .dark ? .darkAqua : .aqua
+            named: appAppearance.colorScheme == .dark ? .darkAqua : .aqua
         )
 
         configureWindowButtonIdentifiers(in: window)
@@ -82,6 +82,17 @@ final class WindowConfigurationView: NSView {
         let usesCompactSize = ProcessInfo.processInfo.arguments.contains(
             "--ui-testing-compact-window"
         )
+        let usesSpaciousSize = ProcessInfo.processInfo.arguments.contains(
+            "--ui-testing-spacious-window"
+        )
+        let targetFrameSize: NSSize
+        if usesCompactSize {
+            targetFrameSize = NSSize(width: 820, height: 560)
+        } else if usesSpaciousSize {
+            targetFrameSize = NSSize(width: 1_320, height: 800)
+        } else {
+            targetFrameSize = NSSize(width: 1_080, height: 700)
+        }
         didPrepareTestingWindow = true
 
         Task { @MainActor [weak window] in
@@ -89,23 +100,19 @@ final class WindowConfigurationView: NSView {
             window.setFrameAutosaveName("")
 
             // SwiftUI 可能在视图挂载后再次恢复旧窗口尺寸，因此延迟后再确认一次。
-            applyTestingFrame(to: window, usesCompactSize: usesCompactSize)
+            applyTestingFrame(to: window, size: targetFrameSize)
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
-            applyTestingFrame(to: window, usesCompactSize: usesCompactSize)
+            applyTestingFrame(to: window, size: targetFrameSize)
         }
     }
 
     @MainActor
-    private func applyTestingFrame(to window: NSWindow, usesCompactSize: Bool) {
-        let targetFrameSize = NSSize(
-            width: usesCompactSize ? 820 : 1080,
-            height: usesCompactSize ? 560 : 700
-        )
+    private func applyTestingFrame(to window: NSWindow, size: NSSize) {
         window.collectionBehavior.insert(.moveToActiveSpace)
         // UI 测试按窗口外框验收，避免标题栏高度被重复计入。
         window.setFrame(
-            NSRect(origin: window.frame.origin, size: targetFrameSize),
+            NSRect(origin: window.frame.origin, size: size),
             display: true
         )
         window.center()

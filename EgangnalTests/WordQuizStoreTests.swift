@@ -88,7 +88,7 @@ struct WordQuizStoreTests {
         store.selectLexiconLevel(.cet4)
 
         #expect(store.isLexiconScoped)
-        #expect(store.scopeTitle == "词库 · 四级")
+        #expect(store.scopeTitle == "集词阁 · 四级")
         #expect(store.canStart)
 
         store.start()
@@ -114,7 +114,7 @@ struct WordQuizStoreTests {
         store.selectRangeMode(.lexicon)
 
         #expect(store.lexiconLevel == nil)
-        #expect(store.scopeTitle == "词库 · 全部")
+        #expect(store.scopeTitle == "集词阁 · 全部")
         #expect(store.canStart)
 
         store.start()
@@ -186,7 +186,7 @@ struct WordQuizStoreTests {
 
         #expect(!store.canStart)
         // 保留仓储的失败原因，不能被"范围没有词条"盖掉。
-        #expect(store.startValidationMessage?.contains("词库数据缺失") == true)
+        #expect(store.startValidationMessage?.contains("集词阁数据缺失") == true)
     }
 
     /// 答题进行中不允许换范围或换等级。

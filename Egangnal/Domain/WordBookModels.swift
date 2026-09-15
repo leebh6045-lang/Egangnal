@@ -86,7 +86,7 @@ enum WordEntrySource: String, CaseIterable, Sendable {
     var title: String {
         switch self {
         case .markdownImport: "文档导入"
-        case .lexiconCollection: "词库收藏"
+        case .lexiconCollection: "集词阁收藏"
         case .manual: "手动新增"
         }
     }

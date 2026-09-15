@@ -87,39 +87,22 @@ enum DailyStudyFeedbackStatus: Equatable, Sendable {
 
         for activity in activities {
             hasEntered = hasEntered || activity.hasEntered
+            guard activity.studiedSeconds.isFinite else { continue }
             studiedSeconds += max(0, activity.studiedSeconds)
         }
 
         guard hasEntered else { return .none }
         return studiedSeconds >= completionThresholdSeconds ? .completed : .visited
     }
-}
 
-/// 日历底色只在同一周行且状态相同的日期之间连接。
-enum CalendarActivityLayout {
-    static func connectsLeading(
-        at index: Int,
-        statuses: [DailyStudyFeedbackStatus]
-    ) -> Bool {
-        guard index > 0,
-              index % 7 != 0,
-              statuses[index] != .none else {
-            return false
+    /// 合并首页当日投入时拒绝非有限值，并把异常负数收敛到零。
+    static func totalStudiedSeconds(
+        from activities: some Sequence<DailyStudyActivitySnapshot>
+    ) -> Double {
+        activities.reduce(0) { total, activity in
+            guard activity.studiedSeconds.isFinite else { return total }
+            return total + max(0, activity.studiedSeconds)
         }
-        return statuses[index - 1] == statuses[index]
-    }
-
-    static func connectsTrailing(
-        at index: Int,
-        statuses: [DailyStudyFeedbackStatus]
-    ) -> Bool {
-        guard index >= 0,
-              index < statuses.count - 1,
-              (index + 1) % 7 != 0,
-              statuses[index] != .none else {
-            return false
-        }
-        return statuses[index + 1] == statuses[index]
     }
 }
 

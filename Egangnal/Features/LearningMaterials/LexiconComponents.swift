@@ -141,6 +141,74 @@ private struct LexiconTaperedRule: Shape {
     }
 }
 
+// MARK: - 图书馆元素
+
+/// 页眉词：词典每页顶端的首尾词，标出本页收录的范围。用当前页的真实首尾词条，不是装饰。
+struct LexiconGuideWords: View {
+    @Environment(\.appPalette) private var palette
+
+    let first: String?
+    let last: String?
+
+    var body: some View {
+        HStack {
+            Text(first ?? "")
+            Spacer()
+            Text(last ?? "")
+        }
+        .font(.system(size: AppTheme.lexiconGuideWordFontSize, design: .serif))
+        .foregroundStyle(palette.tertiaryText)
+        .lineLimit(1)
+        .padding(.horizontal, AppTheme.contentPadding)
+        .frame(height: AppTheme.lexiconGuideWordBandHeight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("本页从 \(first ?? "") 到 \(last ?? "")")
+        .accessibilityIdentifier("lexicon.guideWords")
+    }
+}
+
+/// 藏书章：右下角一枚淡淡的圆形水印，两圈线、环绕文字与中间的缩写。
+struct LexiconLibraryStamp: View {
+    @Environment(\.appPalette) private var palette
+
+    private static let ringText = "EGANGNAL LIBRARY · ECDICT · "
+
+    var body: some View {
+        let size = AppTheme.lexiconStampSize
+        ZStack {
+            Circle()
+                .stroke(palette.stampInk, lineWidth: 1.5)
+            Circle()
+                .stroke(palette.stampInk, lineWidth: 1)
+                .padding(size * 0.16)
+            ringLabel(radius: size * 0.39)
+            Text("EG")
+                .font(.system(size: AppTheme.lexiconStampCenterFontSize, weight: .medium, design: .serif))
+                .tracking(4)
+                .foregroundStyle(palette.stampInk)
+        }
+        .frame(width: size, height: size)
+        .rotationEffect(.degrees(-8))
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    /// 把环绕文字逐字沿圆周摆放：SwiftUI 没有文字沿路径排版，逐字旋转是最简单的替代。
+    private func ringLabel(radius: CGFloat) -> some View {
+        let characters = Array(Self.ringText)
+        let step = 360.0 / Double(characters.count)
+        return ZStack {
+            ForEach(Array(characters.enumerated()), id: \.offset) { index, character in
+                Text(String(character))
+                    .font(.system(size: AppTheme.lexiconStampRingFontSize, weight: .medium, design: .serif))
+                    .foregroundStyle(palette.stampInk)
+                    .offset(y: -radius)
+                    .rotationEffect(.degrees(Double(index) * step))
+            }
+        }
+    }
+}
+
 // MARK: - 检索区
 
 struct LexiconFilterBar: View {
@@ -226,14 +294,15 @@ struct LexiconSearchField: View {
 
 // MARK: - 词块
 
-/// 一个词块：单词在上、词性词义在下，两行居中。
+/// 一个词块：单词在左、词性词义在右。
 ///
-/// 与单词本的四栏横排不同，词库的释义带上词性前缀后更长，需要整列宽度。
+/// 字段的对齐、宽度比与行数由 `EntryFieldArrangement` 决定，词块本身不判断排版样式。
 struct LexiconEntryCell: View {
     @Environment(\.appPalette) private var palette
 
     let entry: LexiconEntry
     let display: LexiconGlossDisplay
+    let arrangement: EntryFieldArrangement
     let keyword: String
     let searchMode: LexiconSearchMode
     let accent: Color
@@ -250,10 +319,13 @@ struct LexiconEntryCell: View {
     let glossHoverChanged: (Bool) -> Void
 
     var body: some View {
-        // 单词在左、词性词义在右，两个字段等宽；网格每行两个词条，
-        // 合起来就是单词本那样的四等分横向排布。
-        HStack(spacing: 6) {
-            EqualFieldsLayout(spacing: AppTheme.lexiconEntryFieldSpacing) {
+        // 默认样式下两个字段等宽；网格每行两个词条，合起来就是单词本那样的四等分横向排布。
+        HStack(alignment: arrangement.controlsAlignment, spacing: 6) {
+            EntryFieldsLayout(
+                spacing: AppTheme.lexiconEntryFieldSpacing,
+                proportions: arrangement.proportions,
+                alignsBaselines: arrangement.alignsBaselines
+            ) {
                 maskedField(
                     isMasked: isTermMasked,
                     visibleLabel: entry.term,
@@ -264,7 +336,7 @@ struct LexiconEntryCell: View {
                 ) {
                     Text(highlightedTerm)
                 }
-                .font(.system(size: AppTheme.lexiconEntryTermFontSize, weight: .semibold))
+                .font(.system(size: AppTheme.entryTermFontSize, weight: .semibold))
 
                 maskedField(
                     isMasked: isGlossMasked,
@@ -278,19 +350,19 @@ struct LexiconEntryCell: View {
                 ) {
                     Text(highlightedGloss)
                 }
-                .font(.system(size: AppTheme.lexiconEntryGlossFontSize))
+                .font(.system(size: AppTheme.entryGlossFontSize))
                 .onHover(perform: glossHoverChanged)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: arrangement.frameAlignment)
 
-            // 与词条同一行、垂直居中；宽度常驻，显隐时不推动词条。
+            // 与词条同一行；宽度常驻，显隐时不推动词条。
             collectButton
                 .frame(width: AppTheme.lexiconCollectButtonWidth)
         }
         .frame(
             maxWidth: .infinity,
-            minHeight: AppTheme.lexiconEntryMinHeight,
-            alignment: .center
+            minHeight: arrangement.minHeight,
+            alignment: arrangement.frameAlignment
         )
         .contentShape(.rect)
         .accessibilityElement(children: .contain)
@@ -376,7 +448,7 @@ struct LexiconEntryCell: View {
     ) -> some View {
         Button(action: action) {
             content()
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(arrangement.textAlignment)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .foregroundStyle(color)
@@ -398,13 +470,13 @@ struct LexiconEntryCell: View {
                         // 不会传播到后加的 overlay 内容里，漏掉就会一直用默认色
                         // （表现就是"已收藏的单词没有变黄"）。
                         content()
-                            .multilineTextAlignment(.center)
+                            .multilineTextAlignment(arrangement.textAlignment)
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .foregroundStyle(color)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, alignment: arrangement.frameAlignment)
                 // 让整个字段区域都可点击/可悬停，而不是只有文字笔画上才算。
                 .contentShape(.rect)
         }

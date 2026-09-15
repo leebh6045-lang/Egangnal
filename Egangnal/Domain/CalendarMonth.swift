@@ -39,9 +39,21 @@ struct CalendarMonth: Equatable {
     }
 
     func moving(by offset: Int) -> CalendarMonth? {
-        let targetMonth = month + offset
-        guard (1...12).contains(targetMonth) else { return nil }
-        return CalendarMonth(year: year, month: targetMonth)
+        let (yearBase, yearOverflow) = year.multipliedReportingOverflow(by: 12)
+        guard !yearOverflow else { return nil }
+        let (currentIndex, monthOverflow) = yearBase.addingReportingOverflow(month - 1)
+        guard !monthOverflow else { return nil }
+        let (targetIndex, offsetOverflow) = currentIndex.addingReportingOverflow(offset)
+        guard !offsetOverflow else { return nil }
+
+        var targetYear = targetIndex / 12
+        var targetMonthIndex = targetIndex % 12
+        if targetMonthIndex < 0 {
+            targetYear -= 1
+            targetMonthIndex += 12
+        }
+        guard targetYear > 0 else { return nil }
+        return CalendarMonth(year: targetYear, month: targetMonthIndex + 1)
     }
 
     private func firstDay(using calendar: Calendar) -> Date? {

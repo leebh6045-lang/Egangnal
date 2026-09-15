@@ -106,7 +106,7 @@ struct WordQuizView: View {
 
     var body: some View {
         ZStack {
-            WorkspaceBackground()
+            WorkspaceBackground(page: .wordQuiz)
 
             ZStack(alignment: .topLeading) {
                 // 答题主体占据整个窗口可用区域，页眉叠加显示，不再挤压主体中心。
@@ -410,7 +410,7 @@ struct WordQuizView: View {
 
     /// 词库范围的等级细分。等级是"考哪一批词"的一部分，因此与范围放在同一组控件里。
     private var lexiconLevelSelector: some View {
-        Picker("词库等级", selection: lexiconLevelBinding) {
+        Picker("集词阁等级", selection: lexiconLevelBinding) {
             Text("全部").tag(VocabularyLevel?.none)
             ForEach(VocabularyLevel.allCases) { level in
                 Text(level.title).tag(VocabularyLevel?.some(level))
@@ -421,8 +421,8 @@ struct WordQuizView: View {
         .font(.body.weight(.medium))
         .controlSize(.large)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .help("只考词库中该等级的单词")
-        .accessibilityLabel("词库等级")
+        .help("只考集词阁中该等级的单词")
+        .accessibilityLabel("集词阁等级")
         .accessibilityIdentifier("wordQuiz.lexiconLevel")
     }
 

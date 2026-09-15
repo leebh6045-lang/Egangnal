@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 
 struct WordBookView: View {
     @Environment(\.appPalette) private var palette
+    @Environment(\.appPersonalization) private var personalization
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let space: LanguageSpace
@@ -35,6 +36,8 @@ struct WordBookView: View {
     @State private var isToolbarExpanded = false
     @State private var isGuidePresented = false
     @State private var maskState = WordBookMaskState()
+    /// 横格本所在滚动区的窗口位置，背景据此抠掉纸面下的网格。
+    @State private var ruledSheetRegion: RuledSheetRegion?
 
     init(
         space: LanguageSpace,
@@ -52,7 +55,11 @@ struct WordBookView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            WorkspaceBackground()
+            WorkspaceBackground(
+                page: .wordBook,
+                showsLamp: personalization.wordBook.showsLamp,
+                gridCutout: gridCutout
+            )
 
             VStack(alignment: .leading, spacing: AppTheme.panelSpacing) {
                 header
@@ -67,6 +74,9 @@ struct WordBookView: View {
 
             readingControls
                 .padding(AppTheme.contentPadding)
+        }
+        .onPreferenceChange(RuledSheetRegionPreferenceKey.self) { region in
+            ruledSheetRegion = region
         }
         .onAppear {
             reloadEntries()
@@ -239,6 +249,19 @@ struct WordBookView: View {
         AppTheme.contentPadding
     }
 
+    private var layoutStyle: WordBookLayoutStyle {
+        personalization.wordBook.layout
+    }
+
+    private var gridCutout: RuledSheetRegion? {
+        layoutStyle == .ruled ? ruledSheetRegion : nil
+    }
+
+    /// 只有默认分页需要手帐按日期分组；按日期浏览本身已是一天一页。
+    private var groupsByDate: Bool {
+        browseMode == .all
+    }
+
     private var modePicker: some View {
         Picker("浏览方式", selection: $browseMode) {
             ForEach(WordBookBrowseMode.allCases) { mode in
@@ -296,11 +319,11 @@ struct WordBookView: View {
             case .manual:
                 entryPanel(
                     title: "未归档单词",
-                    subtitle: "手动新增或词库收藏 \(manualEntries.count) 个",
+                    subtitle: "手动新增或集词阁收藏 \(manualEntries.count) 个",
                     displayedEntries: manualEntries,
                     emphasizesFrequency: false,
                     emptyTitle: "没有未归档单词",
-                    emptyMessage: "手动新增或从词库收藏的单词会显示在这里。"
+                    emptyMessage: "手动新增或从集词阁收藏的单词会显示在这里。"
                 )
             }
         } else {
@@ -341,52 +364,116 @@ struct WordBookView: View {
                 WordBookEmptyState(title: emptyTitle, message: emptyMessage)
                     .frame(maxWidth: .infinity, minHeight: AppTheme.wordBookContentMinHeight)
             } else {
-                ScrollView {
-                    LazyVGrid(
-                        columns: [
-                            GridItem(
-                                .flexible(minimum: 0),
-                                spacing: AppTheme.wordBookEntryColumnSpacing,
-                                alignment: .top
-                            ),
-                            GridItem(
-                                .flexible(minimum: 0),
-                                spacing: AppTheme.wordBookEntryColumnSpacing,
-                                alignment: .top
-                            )
-                        ],
-                        alignment: .center,
-                        spacing: 22
-                    ) {
-                        ForEach(displayedEntries) { entry in
-                            WordBookEntryRow(
-                                entry: entry,
-                                frequencyColor: palette.frequencyAccent,
-                                emphasizesFrequency: emphasizesFrequency,
-                                isEditing: isEditing,
-                                isWordVisible: maskState.isWordVisible(entry.id),
-                                isMeaningVisible: maskState.isMeaningVisible(entry.id),
-                                toggleWord: {
-                                    maskState.toggleWord(entry.id)
-                                },
-                                toggleMeaning: {
-                                    maskState.toggleMeaning(entry.id)
-                                },
-                                edit: {
-                                    editorDraft = .editing(entry)
-                                },
-                                delete: {
-                                    pendingDeletion = entry
-                                }
-                            )
-                        }
-                    }
-                    .padding(.top, 8)
-                    .padding(.bottom, AppTheme.wordBookReadingControlsClearance)
-                }
+                entryContainer(
+                    displayedEntries,
+                    emphasizesFrequency: emphasizesFrequency,
+                    groupsByDate: groupsByDate
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// 排版样式只决定词条被装进哪种容器；词条行本身通过 `EntryFieldArrangement` 适配。
+    @ViewBuilder
+    private func entryContainer(
+        _ displayedEntries: [WordBookEntrySnapshot],
+        emphasizesFrequency: Bool,
+        groupsByDate: Bool
+    ) -> some View {
+        switch layoutStyle {
+        case .standard:
+            ScrollView {
+                LazyVGrid(
+                    columns: [
+                        GridItem(
+                            .flexible(minimum: 0),
+                            spacing: AppTheme.entryGridColumnSpacing,
+                            alignment: .top
+                        ),
+                        GridItem(
+                            .flexible(minimum: 0),
+                            spacing: AppTheme.entryGridColumnSpacing,
+                            alignment: .top
+                        )
+                    ],
+                    alignment: .center,
+                    spacing: AppTheme.entryGridRowSpacing
+                ) {
+                    ForEach(displayedEntries) { entry in
+                        entryRow(entry, emphasizesFrequency: emphasizesFrequency)
+                    }
+                }
+                .padding(.top, 8)
+                .padding(.bottom, AppTheme.wordBookReadingControlsClearance)
+            }
+        case .ruled:
+            ScrollView {
+                RuledEntrySheet(
+                    items: displayedEntries,
+                    lineStyle: personalization.wordBook.ruledLineStyle,
+                    showsGrid: personalization.wordBook.backgroundPattern != .none,
+                    horizontalInset: AppTheme.contentPadding,
+                    bottomInset: AppTheme.ruledWordBookBottomInset
+                ) { entry in
+                    entryRow(entry, emphasizesFrequency: emphasizesFrequency)
+                }
+            }
+            // 纸面要通到窗口两边：把滚动区拉出内容内边距，行内容再由纸面自己收回来。
+            .padding(.horizontal, -AppTheme.contentPadding)
+            .ruledSheetRegion(personalization.wordBook.ruledLineStyle)
+        case .journal:
+            ScrollView {
+                JournalEntrySheet(
+                    sections: journalSections(displayedEntries, groupsByDate: groupsByDate),
+                    accent: palette.accent(for: space),
+                    bottomInset: AppTheme.wordBookReadingControlsClearance
+                ) { entry in
+                    entryRow(entry, emphasizesFrequency: emphasizesFrequency)
+                }
+            }
+        }
+    }
+
+    /// 默认分页按最近出现日期分组；按日期浏览时页面标题已是这一天，不再重复分组标题。
+    private func journalSections(
+        _ displayedEntries: [WordBookEntrySnapshot],
+        groupsByDate: Bool
+    ) -> [JournalSection<WordBookEntrySnapshot>] {
+        if groupsByDate {
+            return WordBookJournal.sections(
+                for: displayedEntries,
+                today: VocabularyDocumentDate(date: .now)
+            )
+        }
+        return WordBookJournal.singleSection(displayedEntries, id: "page")
+    }
+
+    private func entryRow(
+        _ entry: WordBookEntrySnapshot,
+        emphasizesFrequency: Bool
+    ) -> some View {
+        WordBookEntryRow(
+            entry: entry,
+            arrangement: layoutStyle.fieldArrangement,
+            frequencyColor: palette.frequencyAccent,
+            emphasizesFrequency: emphasizesFrequency,
+            isEditing: isEditing,
+            isWordVisible: maskState.isWordVisible(entry.id),
+            isMeaningVisible: maskState.isMeaningVisible(entry.id),
+            toggleWord: {
+                maskState.toggleWord(entry.id)
+            },
+            toggleMeaning: {
+                maskState.toggleMeaning(entry.id)
+            },
+            edit: {
+                editorDraft = .editing(entry)
+            },
+            delete: {
+                pendingDeletion = entry
+            }
+        )
     }
 
     @ViewBuilder
