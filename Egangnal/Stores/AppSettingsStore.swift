@@ -33,6 +33,9 @@ final class AppSettingsStore {
         static let lexiconGuideWords = "settings.lexiconGuideWords"
         static let lexiconStamp = "settings.lexiconStamp"
         static let wordQuizSoundEffect = "settings.wordQuizSoundEffect"
+        static let entryCeremonyStyle = "settings.entryCeremony.style"
+        static let entryCeremonyFrequency = "settings.entryCeremony.frequency"
+        static let featureTransition = "settings.featureTransition.style"
         static let exportDirectoryBookmark = "settings.exportDirectoryBookmark"
         static let exportDirectoryPath = "settings.exportDirectoryPath"
 
@@ -56,6 +59,8 @@ final class AppSettingsStore {
     private(set) var wordBook: WordBookPersonalization
     private(set) var lexicon: LexiconPersonalization
     private(set) var wordQuiz: WordQuizPersonalization
+    private(set) var workspaceEntry: WorkspaceEntryPersonalization
+    private(set) var featureTransition: WorkspaceFeatureTransitionStyle
     private(set) var wordQuizSoundEffect: WordQuizSoundEffect
     private(set) var exportDirectoryPath: String?
 
@@ -135,6 +140,23 @@ final class AppSettingsStore {
                 preferences: preferences
             )
         )
+        workspaceEntry = WorkspaceEntryPersonalization(
+            ceremonyStyle: Self.storedChoice(
+                forKey: StorageKey.entryCeremonyStyle,
+                preferences: preferences,
+                defaultValue: .lamp
+            ),
+            ceremonyFrequency: Self.storedChoice(
+                forKey: StorageKey.entryCeremonyFrequency,
+                preferences: preferences,
+                defaultValue: .daily
+            )
+        )
+        featureTransition = Self.storedChoice(
+            forKey: StorageKey.featureTransition,
+            preferences: preferences,
+            defaultValue: .slide
+        )
         wordQuizSoundEffect = Self.storedChoice(
             forKey: StorageKey.wordQuizSoundEffect,
             preferences: preferences,
@@ -162,7 +184,9 @@ final class AppSettingsStore {
             dashboardBackgroundPattern: dashboardBackgroundPattern,
             wordBook: wordBook,
             lexicon: lexicon,
-            wordQuiz: wordQuiz
+            wordQuiz: wordQuiz,
+            workspaceEntry: workspaceEntry,
+            featureTransition: featureTransition
         )
     }
 
@@ -234,6 +258,22 @@ final class AppSettingsStore {
     func setWordQuizSoundEffect(_ effect: WordQuizSoundEffect) {
         wordQuizSoundEffect = effect
         preferences?.set(effect.rawValue, forKey: StorageKey.wordQuizSoundEffect)
+    }
+
+    func setEntryCeremonyStyle(_ style: WorkspaceEntryCeremonyStyle) {
+        workspaceEntry.ceremonyStyle = style
+        preferences?.set(style.rawValue, forKey: StorageKey.entryCeremonyStyle)
+    }
+
+    func setFeatureTransition(_ style: WorkspaceFeatureTransitionStyle) {
+        featureTransition = style
+        preferences?.set(style.rawValue, forKey: StorageKey.featureTransition)
+    }
+
+    /// 频率改完即刻生效：下一次进入就按新规则判定，不重置已有的进入记录。
+    func setEntryCeremonyFrequency(_ frequency: WorkspaceEntryCeremonyFrequency) {
+        workspaceEntry.ceremonyFrequency = frequency
+        preferences?.set(frequency.rawValue, forKey: StorageKey.entryCeremonyFrequency)
     }
 
     func selectExportDirectory(_ directoryURL: URL) throws {

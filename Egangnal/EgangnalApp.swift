@@ -34,7 +34,8 @@ struct EgangnalApp: App {
                 lexiconShuffleController: dependencies.lexiconShuffleController,
                 wordBookShuffleController: dependencies.wordBookShuffleController,
                 studyTimeController: dependencies.studyTimeController,
-                appUpdateController: dependencies.appUpdateController
+                appUpdateController: dependencies.appUpdateController,
+                entryCeremonyStore: dependencies.entryCeremonyStore
             )
                 .frame(minWidth: 820, minHeight: minimumContentHeight)
                 .modelContainer(dependencies.modelContainer)

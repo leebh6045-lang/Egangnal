@@ -36,8 +36,6 @@ struct WordBookView: View {
     @State private var isToolbarExpanded = false
     @State private var isGuidePresented = false
     @State private var maskState = WordBookMaskState()
-    /// 横格本所在滚动区的窗口位置，背景据此抠掉纸面下的网格。
-    @State private var ruledSheetRegion: RuledSheetRegion?
 
     init(
         space: LanguageSpace,
@@ -54,13 +52,8 @@ struct WordBookView: View {
     }
 
     var body: some View {
+        // 背景由 WorkspaceShell 统一绘制：页面自己画背景会在切换时被淡两次而闪烁。
         ZStack(alignment: .bottomTrailing) {
-            WorkspaceBackground(
-                page: .wordBook,
-                showsLamp: personalization.wordBook.showsLamp,
-                gridCutout: gridCutout
-            )
-
             VStack(alignment: .leading, spacing: AppTheme.panelSpacing) {
                 header
                 noticeArea
@@ -74,9 +67,6 @@ struct WordBookView: View {
 
             readingControls
                 .padding(AppTheme.contentPadding)
-        }
-        .onPreferenceChange(RuledSheetRegionPreferenceKey.self) { region in
-            ruledSheetRegion = region
         }
         .onAppear {
             reloadEntries()
@@ -253,11 +243,7 @@ struct WordBookView: View {
         personalization.wordBook.layout
     }
 
-    private var gridCutout: RuledSheetRegion? {
-        layoutStyle == .ruled ? ruledSheetRegion : nil
-    }
-
-    /// 只有默认分页需要手帐按日期分组；按日期浏览本身已是一天一页。
+    /// 只有���认分页需要手帐按日期分组；按日期浏览本身已是一天一页。
     private var groupsByDate: Bool {
         browseMode == .all
     }

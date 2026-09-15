@@ -44,6 +44,7 @@ final class WorkspaceExitCoordinator {
 
 struct WorkspaceShell<Content: View>: View {
     @Environment(\.appPalette) private var palette
+    @Environment(\.appPersonalization) private var personalization
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let space: LanguageSpace
@@ -51,6 +52,8 @@ struct WorkspaceShell<Content: View>: View {
     let studyTimeController: StudyTimeController
     let selectFeature: (WorkspaceFeature) -> Void
     let entryRevealID: Int
+    /// 本次进入要播的启动页样式；nil 表示不播，只做常驻的强化过渡。
+    let entryCeremony: WorkspaceEntryCeremonyStyle?
     private let content: (WorkspaceExitCoordinator) -> Content
 
     @State private var isNavigationVisible = false
@@ -61,6 +64,11 @@ struct WorkspaceShell<Content: View>: View {
     @State private var isFunctionBarHovered = false
     @State private var isStudyTimeHovered = false
     @State private var handledEntryRevealID = 0
+    @State private var isCeremonyPlaying = false
+    /// 上一次渲染时的功能，用来决定滑移方向；只在 body 里读、在 onChange 里写。
+    @State private var previousFeature: WorkspaceFeature?
+    /// 横格本所在滚动区，由功能页通过偏好值上报，壳层据此在背景里抠掉网格。
+    @State private var ruledSheetRegion: RuledSheetRegion?
     @State private var exitCoordinator = WorkspaceExitCoordinator()
     @Namespace private var selectionNamespace
 
@@ -70,6 +78,7 @@ struct WorkspaceShell<Content: View>: View {
         studyTimeController: StudyTimeController,
         selectFeature: @escaping (WorkspaceFeature) -> Void,
         entryRevealID: Int = 0,
+        entryCeremony: WorkspaceEntryCeremonyStyle? = nil,
         @ViewBuilder content: @escaping (WorkspaceExitCoordinator) -> Content
     ) {
         self.space = space
@@ -77,11 +86,20 @@ struct WorkspaceShell<Content: View>: View {
         self.studyTimeController = studyTimeController
         self.selectFeature = selectFeature
         self.entryRevealID = entryRevealID
+        self.entryCeremony = entryCeremony
         self.content = content
     }
 
     var body: some View {
         ZStack(alignment: .top) {
+            // 背景只在这里画一次：切换功能页时只有内容交叉，底色与网格不会被淡两次。
+            WorkspaceBackground(
+                page: selectedFeature.backgroundScope,
+                showsLamp: selectedFeature == .wordBook && personalization.wordBook.showsLamp,
+                gridCutout: ruledSheetRegion
+            )
+            .animation(featurePageAnimation, value: selectedFeature)
+
             ZStack {
                 content(exitCoordinator)
                     .id(selectedFeature)
@@ -89,6 +107,9 @@ struct WorkspaceShell<Content: View>: View {
             }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(featurePageAnimation, value: selectedFeature)
+                .onPreferenceChange(RuledSheetRegionPreferenceKey.self) { region in
+                    ruledSheetRegion = region
+                }
 
             if !isNavigationVisible {
                 topActivationArea
@@ -106,6 +127,18 @@ struct WorkspaceShell<Content: View>: View {
                     .padding(.top, AppTheme.workspaceNavigationTopInset)
                     .transition(navigationTransition)
                     .zIndex(2)
+            }
+
+            if isCeremonyPlaying, let entryCeremony {
+                // 启动页盖在最上层；功能页已在它底下就位，幕布淡出露出的就是页面本身。
+                WorkspaceEntryCeremonyView(
+                    space: space,
+                    feature: selectedFeature,
+                    hours: studyTimeController.displayedHours(for: space),
+                    style: entryCeremony,
+                    finish: finishCeremony
+                )
+                .zIndex(3)
             }
         }
         .onReceive(
@@ -137,6 +170,11 @@ struct WorkspaceShell<Content: View>: View {
         }
         .onChange(of: entryRevealID) { _, _ in
             revealForEntryIfNeeded()
+        }
+        .onChange(of: selectedFeature) { _, newFeature in
+            // 切换后功能页重建，旧页登记的区域已失效；新页会重新上报。
+            ruledSheetRegion = nil
+            previousFeature = newFeature
         }
         .onDisappear {
             hideTask?.cancel()
@@ -212,6 +250,8 @@ struct WorkspaceShell<Content: View>: View {
             height: AppTheme.workspaceNavigationHeight
         )
         .background { WorkspaceNavigationCapsuleBackground() }
+        // 选中胶囊在按钮之间滑动：位移由 matchedGeometryEffect 给出，节奏由这一条动画统一。
+        .animation(selectionAnimation, value: selectedFeature)
         .clipShape(.capsule)
         .overlay {
             Capsule()
@@ -297,6 +337,11 @@ struct WorkspaceShell<Content: View>: View {
         }
     }
 
+    /// 胶囊滑动用略带回弹的弹簧，与功能栏本身 0.22 s 的出现节奏接近。
+    private var selectionAnimation: Animation? {
+        reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.82)
+    }
+
     private var navigationTransition: AnyTransition {
         guard !reduceMotion else { return .identity }
         return .offset(y: -10).combined(with: .opacity)
@@ -307,14 +352,46 @@ struct WorkspaceShell<Content: View>: View {
         reduceMotion ? .identity : .opacity
     }
 
+    /// 按功能栏的左右顺序决定方向：向右切换时新页从右侧进、旧页向左退。
+    private var featureDirection: CGFloat {
+        let all = WorkspaceFeature.allCases
+        guard let previousFeature,
+              let from = all.firstIndex(of: previousFeature),
+              let to = all.firstIndex(of: selectedFeature),
+              from != to else { return 1 }
+        return to > from ? 1 : -1
+    }
+
     private var featurePageTransition: AnyTransition {
-        reduceMotion ? .identity : .opacity
+        guard !reduceMotion else { return .identity }
+        switch personalization.featureTransition {
+        case .crossfade:
+            return .opacity
+        case .slide:
+            let distance = AppTheme.featureSlideDistance * featureDirection
+            return .asymmetric(
+                insertion: .offset(x: distance).combined(with: .opacity),
+                removal: .offset(x: -distance).combined(with: .opacity)
+            )
+        case .float:
+            return .asymmetric(
+                insertion: .modifier(
+                    active: WorkspaceFeatureFloatModifier(scale: AppTheme.featureFloatScale, isActive: true),
+                    identity: WorkspaceFeatureFloatModifier(scale: AppTheme.featureFloatScale, isActive: false)
+                ),
+                removal: .modifier(
+                    active: WorkspaceFeatureFloatModifier(scale: 2 - AppTheme.featureFloatScale, isActive: true),
+                    identity: WorkspaceFeatureFloatModifier(scale: 2 - AppTheme.featureFloatScale, isActive: false)
+                )
+            )
+        }
     }
 
     private var featurePageAnimation: Animation? {
-        reduceMotion
-            ? nil
-            : .easeInOut(duration: AppTheme.pageFadeDuration)
+        guard !reduceMotion else { return nil }
+        return personalization.featureTransition == .crossfade
+            ? .easeInOut(duration: AppTheme.pageFadeDuration)
+            : .easeOut(duration: AppTheme.featureTransitionDuration)
     }
 
     private func showNavigation() {
@@ -331,6 +408,23 @@ struct WorkspaceShell<Content: View>: View {
             return
         }
         handledEntryRevealID = entryRevealID
+        // 有启动页时功能栏的新手提示延后到启动页结束，否则它会在幕布底下白白闪过。
+        if entryCeremony != nil {
+            isCeremonyPlaying = true
+        } else {
+            revealNavigationForEntry()
+        }
+    }
+
+    private func finishCeremony() {
+        guard isCeremonyPlaying else { return }
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+            isCeremonyPlaying = false
+        }
+        revealNavigationForEntry()
+    }
+
+    private func revealNavigationForEntry() {
         entryRevealTask?.cancel()
         isEntryRevealActive = true
         showNavigation()
@@ -409,11 +503,35 @@ struct WorkspaceShell<Content: View>: View {
         entryRevealTask?.cancel()
         entryRevealTask = nil
         isEntryRevealActive = false
+        isCeremonyPlaying = false
         isActivationAreaHovered = false
         isFunctionBarHovered = false
         isStudyTimeHovered = false
         withTransaction(Transaction(animation: nil)) {
             isNavigationVisible = false
+        }
+    }
+}
+
+/// 功能页"浮现"切换的起止状态：进来的从略大略糊到清晰，出去的反之。
+private struct WorkspaceFeatureFloatModifier: ViewModifier {
+    let scale: CGFloat
+    let isActive: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isActive ? 0 : 1)
+            .scaleEffect(isActive ? scale : 1)
+            .blur(radius: isActive ? AppTheme.featureFloatBlur : 0)
+    }
+}
+
+private extension WorkspaceFeature {
+    var backgroundScope: PageBackgroundScope {
+        switch self {
+        case .wordBook: .wordBook
+        case .lexicon: .lexicon
+        case .wordQuiz: .wordQuiz
         }
     }
 }
@@ -436,8 +554,6 @@ struct WorkspaceLexiconPlaceholder: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            WorkspaceBackground(page: .lexicon)
-
             VStack(spacing: 14) {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 34, weight: .light))

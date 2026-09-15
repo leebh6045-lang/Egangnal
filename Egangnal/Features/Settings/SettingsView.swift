@@ -168,7 +168,34 @@ struct SettingsView: View {
                 selection: backgroundBinding(for: .dashboard)
             )
 
-            sectionCaption("首页与设置页共用这一份背景；单词本、集词阁和单词刷在下方各自设置，互不影响。")
+            choiceRow(
+                "启动页",
+                identifier: "settings.entryCeremony.style",
+                selection: Binding(
+                    get: { settingsStore.workspaceEntry.ceremonyStyle },
+                    set: { settingsStore.setEntryCeremonyStyle($0) }
+                )
+            )
+
+            choiceRow(
+                "启动页频率",
+                identifier: "settings.entryCeremony.frequency",
+                selection: Binding(
+                    get: { settingsStore.workspaceEntry.ceremonyFrequency },
+                    set: { settingsStore.setEntryCeremonyFrequency($0) }
+                )
+            )
+
+            choiceRow(
+                "功能页切换",
+                identifier: "settings.featureTransition.style",
+                selection: Binding(
+                    get: { settingsStore.featureTransition },
+                    set: { settingsStore.setFeatureTransition($0) }
+                )
+            )
+
+            sectionCaption("首页与设置页共用这一份背景；单词本、集词阁和单词刷在下方各自设置，互不影响。启动页在从首页进入语言空间时播放约 1 秒，点击可跳过；不播放时功能页以轻微浮现过渡。功能页切换指在单词本、集词阁、单词刷之间切换时的效果。")
         }
         .foregroundStyle(palette.primaryText)
     }
@@ -474,6 +501,9 @@ extension WordBookLayoutStyle: SettingsChoice {}
 extension LexiconLayoutStyle: SettingsChoice {}
 extension RuledLineStyle: SettingsChoice {}
 extension PageBackgroundPattern: SettingsChoice {}
+extension WorkspaceEntryCeremonyStyle: SettingsChoice {}
+extension WorkspaceEntryCeremonyFrequency: SettingsChoice {}
+extension WorkspaceFeatureTransitionStyle: SettingsChoice {}
 
 #Preview {
     SettingsView(

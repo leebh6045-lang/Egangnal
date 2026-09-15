@@ -106,8 +106,6 @@ struct WordQuizView: View {
 
     var body: some View {
         ZStack {
-            WorkspaceBackground(page: .wordQuiz)
-
             ZStack(alignment: .topLeading) {
                 // 答题主体占据整个窗口可用区域，页眉叠加显示，不再挤压主体中心。
                 quizBody

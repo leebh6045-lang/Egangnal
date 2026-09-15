@@ -24,6 +24,8 @@ struct AppDependencies {
     let wordBookShuffleController: ShuffleSeedController
     let studyTimeController: StudyTimeController
     let appUpdateController: any AppUpdating
+    /// 启动页的进入记录活在应用级：换页面重建视图不能让"当天首次"重新计数。
+    let entryCeremonyStore: WorkspaceEntryCeremonyStore
 
     static func live() -> AppDependencies {
         let arguments = ProcessInfo.processInfo.arguments
@@ -191,7 +193,8 @@ struct AppDependencies {
             lexiconShuffleController: ShuffleSeedController(),
             wordBookShuffleController: ShuffleSeedController(),
             studyTimeController: studyTimeController,
-            appUpdateController: appUpdateController
+            appUpdateController: appUpdateController,
+            entryCeremonyStore: WorkspaceEntryCeremonyStore()
         )
     }
 

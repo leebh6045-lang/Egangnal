@@ -122,6 +122,15 @@ enum AppTheme {
     static let lexiconStampCenterFontSize: CGFloat = 22
     static let toggleSize: CGFloat = 36
     static let pageFadeDuration: TimeInterval = 0.22
+    /// 从首页进入功能页的常驻过渡：略带模糊与放大地浮现，比纯淡入更不生硬（2026-09-15 用户定稿）。
+    static let workspaceEnterDuration: TimeInterval = 0.36
+    static let workspaceEnterBlur: CGFloat = 3
+    static let workspaceEnterScale: CGFloat = 1.012
+    /// 功能页之间的切换（2026-09-15 用户定稿）：滑移 20 pt、浮现幅度为进入效果的一半，0.30 s。
+    static let featureTransitionDuration: TimeInterval = 0.30
+    static let featureSlideDistance: CGFloat = 20
+    static let featureFloatScale: CGFloat = 1.008
+    static let featureFloatBlur: CGFloat = 2
     static let rippleDuration: TimeInterval = 0.72
     static let rippleFeather: CGFloat = 40
     static let rippleCleanupDelay: Duration = .milliseconds(800)
@@ -349,7 +358,10 @@ struct WorkspaceBackground: View {
             }
 
             if pattern != .none {
+                // 图案随页面偏好变化时整层替换，让它交叉淡入而不是瞬间重画。
                 WorkspaceGridPattern(pattern: pattern, cutout: gridCutout)
+                    .id(pattern)
+                    .transition(.opacity)
             }
         }
         .ignoresSafeArea()

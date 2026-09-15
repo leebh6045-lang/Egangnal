@@ -22,11 +22,14 @@ struct ContentView: View {
     let wordBookShuffleController: ShuffleSeedController
     let studyTimeController: StudyTimeController
     let appUpdateController: any AppUpdating
+    let entryCeremonyStore: WorkspaceEntryCeremonyStore
 
     // UI 自动化可直接进入指定页面，正式启动始终从首页开始。
     @State private var route: AppRoute = Self.initialRoute
     // 每次从首页进入语言空间时递增，用于触发一次顶部栏新手提示。
     @State private var workspaceEntryRevealID = 0
+    /// 本次进入语言空间要播的启动页；离开首页以外的路由变化不改变它。
+    @State private var pendingEntryCeremony: WorkspaceEntryCeremonyStyle?
 
     private static var initialRoute: AppRoute {
         let arguments = ProcessInfo.processInfo.arguments
@@ -72,7 +75,8 @@ struct ContentView: View {
                     selectedFeature: feature,
                     studyTimeController: studyTimeController,
                     selectFeature: { openWorkspace(space, $0) },
-                    entryRevealID: workspaceEntryRevealID
+                    entryRevealID: workspaceEntryRevealID,
+                    entryCeremony: pendingEntryCeremony
                 ) { exitCoordinator in
                     workspaceContent(
                         space: space,
@@ -80,7 +84,7 @@ struct ContentView: View {
                         exitCoordinator: exitCoordinator
                     )
                 }
-                .transition(rootPageTransition)
+                .transition(workspaceEnterTransition)
             }
         }
         .animation(rootPageAnimation, value: route.rootPageIdentity)
@@ -149,6 +153,7 @@ struct ContentView: View {
     }
 
     private func openDashboard() {
+        pendingEntryCeremony = nil
         route = .dashboard
     }
 
@@ -156,19 +161,53 @@ struct ContentView: View {
         reduceMotion ? .identity : .opacity
     }
 
+    /// 语言空间的常驻进入效果：从轻微模糊与放大中浮现；离开仍是淡出。
+    private var workspaceEnterTransition: AnyTransition {
+        guard !reduceMotion else { return .identity }
+        // 播启动页时它本身就是转场，功能页直接就位在幕布底下；只有不播时才做浮现。
+        guard pendingEntryCeremony == nil else {
+            return .asymmetric(insertion: .identity, removal: .opacity)
+        }
+        return .asymmetric(
+            insertion: .modifier(
+                active: WorkspaceEnterModifier(isActive: true),
+                identity: WorkspaceEnterModifier(isActive: false)
+            ),
+            removal: .opacity
+        )
+    }
+
     private var rootPageAnimation: Animation? {
-        reduceMotion
-            ? nil
-            : .easeInOut(duration: AppTheme.pageFadeDuration)
+        guard !reduceMotion else { return nil }
+        // 进入语言空间用更长的浮现时长，其它根路由切换保持原有淡入淡出。
+        if case .workspace = route {
+            return .easeOut(duration: AppTheme.workspaceEnterDuration)
+        }
+        return .easeInOut(duration: AppTheme.pageFadeDuration)
     }
 
     private func openLanguage(_ space: LanguageSpace) {
         // 首页入口直接恢复该语言上次使用的功能，跳过旧的功能卡片中间页。
         workspaceEntryRevealID &+= 1
+        let entry = settingsStore.workspaceEntry
+        let plays = entryCeremonyStore.registerEntry(
+            to: space,
+            frequency: entry.ceremonyFrequency,
+            reduceMotion: reduceMotion || Self.suppressesEntryCeremony
+        )
+        pendingEntryCeremony = plays ? entry.ceremonyStyle : nil
         route = .workspace(
             space,
             workspaceNavigationStore.lastFeature(for: space)
         )
+    }
+
+    /// UI 自动化默认不播启动页：既有用例进入功能页后立即断言，1 秒的覆盖层会让它们假失败。
+    /// 专门验证启动页的用例再用 `--ui-testing-entry-ceremony` 打开。
+    private static var suppressesEntryCeremony: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("--ui-testing")
+            && !arguments.contains("--ui-testing-entry-ceremony")
     }
 
     private func openSettings() {
@@ -261,7 +300,20 @@ struct ContentView: View {
         lexiconShuffleController: ShuffleSeedController(),
         wordBookShuffleController: ShuffleSeedController(),
         studyTimeController: .preview,
-        appUpdateController: DisabledAppUpdateController()
+        appUpdateController: DisabledAppUpdateController(),
+        entryCeremonyStore: WorkspaceEntryCeremonyStore()
     )
         .frame(width: 1080, height: 700)
+}
+
+/// 功能页浮现时的起始状态：略微放大并带一点模糊，落定后清晰。
+private struct WorkspaceEnterModifier: ViewModifier {
+    let isActive: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isActive ? 0 : 1)
+            .scaleEffect(isActive ? AppTheme.workspaceEnterScale : 1)
+            .blur(radius: isActive ? AppTheme.workspaceEnterBlur : 0)
+    }
 }

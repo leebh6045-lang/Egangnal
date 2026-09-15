@@ -29,8 +29,6 @@ struct LexiconView: View {
     /// 立即生效的悬停词块：收录按钮不等悬停延迟。
     @State private var hoveredCellID: UUID?
     @State private var hoverTask: Task<Void, Never>?
-    /// 横格本所在滚动区的窗口位置，背景据此抠掉纸面下的网格。
-    @State private var ruledSheetRegion: RuledSheetRegion?
 
     private static let gridSpace = "lexicon.grid"
     private static let topAnchorID = "lexicon.grid.top"
@@ -58,9 +56,8 @@ struct LexiconView: View {
         // 搜索框需要可写绑定；Store 仍是唯一事实来源，写入后由 onChange 触发重新查询。
         @Bindable var store = store
 
+        // 背景由 WorkspaceShell 统一绘制，见 WordBookView 的说明。
         return ZStack(alignment: .topLeading) {
-            WorkspaceBackground(page: .lexicon, gridCutout: gridCutout)
-
             VStack(spacing: 0) {
                 LexiconHeaderRow(
                     title: "\(space.title)集词阁",
@@ -103,9 +100,6 @@ struct LexiconView: View {
                     .padding(.bottom, AppTheme.contentPadding + 8)
             }
         }
-        .onPreferenceChange(RuledSheetRegionPreferenceKey.self) { region in
-            ruledSheetRegion = region
-        }
         .onAppear {
             if store.page.entries.isEmpty, store.errorMessage == nil {
                 store.loadInitial()
@@ -145,10 +139,6 @@ struct LexiconView: View {
 
     private var layoutStyle: LexiconLayoutStyle {
         personalization.lexicon.layout
-    }
-
-    private var gridCutout: RuledSheetRegion? {
-        layoutStyle == .ruled ? ruledSheetRegion : nil
     }
 
     private var gridArea: some View {

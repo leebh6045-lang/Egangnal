@@ -129,6 +129,12 @@ struct WordQuizPersonalization: Equatable, Sendable {
     var backgroundPattern: PageBackgroundPattern = .grid
 }
 
+/// 从首页进入语言空间时的启动页偏好。
+struct WorkspaceEntryPersonalization: Equatable, Sendable {
+    var ceremonyStyle: WorkspaceEntryCeremonyStyle = .lamp
+    var ceremonyFrequency: WorkspaceEntryCeremonyFrequency = .daily
+}
+
 /// 全部个性化偏好的只读快照，经环境值注入页面。
 ///
 /// 按页面分组而不是平铺：用户在设置里按页调整，任何一页的偏好都不能"顺带"改变另一页；
@@ -140,6 +146,8 @@ struct AppPersonalization: Equatable, Sendable {
     var wordBook = WordBookPersonalization()
     var lexicon = LexiconPersonalization()
     var wordQuiz = WordQuizPersonalization()
+    var workspaceEntry = WorkspaceEntryPersonalization()
+    var featureTransition: WorkspaceFeatureTransitionStyle = .slide
 
     /// 首次启动的默认值：封面图开启，所有页面显示网格，氛围元素关闭。
     static let enabled = AppPersonalization()
