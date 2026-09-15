@@ -1,15 +1,4 @@
-<?xml version="1.0" standalone="yes"?>
-<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
-    <channel>
-        <title>Egangnal</title>
-        <item>
-            <title>1.0.5</title>
-            <pubDate>Wed, 16 Sep 2026 00:57:50 +0800</pubDate>
-            <sparkle:version>6</sparkle:version>
-            <sparkle:shortVersionString>1.0.5</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Egangnal 1.0.5
+# Egangnal 1.0.5
 
 本次更新集中在前端视觉与进入语言空间时的体验。
 
@@ -38,8 +27,3 @@
 
 背景图案与横格线样式改为**按页面分别保存**——首页（含设置页）、单词本、词库、单词刷各存一份。
 设置页相应按页面分区。日历反馈底色恢复为「同一周同色相邻日期相连」的条带。
-]]></description>
-            <enclosure url="https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.5/Egangnal-1.0.5.zip" length="6017882" type="application/octet-stream" sparkle:edSignature="8WO8N1EmQ2DKtmRafe4lmWVbIsGnPtHmdjH1q1tJATSVuk9D66pi2JroU0MWNSwwTXMEnHRykaj4AN0f+/vJCw=="/>
-        </item>
-    </channel>
-</rss>
