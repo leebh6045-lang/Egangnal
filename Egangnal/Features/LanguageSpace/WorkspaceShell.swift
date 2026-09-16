@@ -114,12 +114,15 @@ struct WorkspaceShell<Content: View>: View {
             }
 
             if isNavigationVisible {
-                // 材质带与功能栏同进同出：它只是功能栏的“影子”，不单独存在。
-                WorkspaceNavigationBackdrop()
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .ignoresSafeArea()
-                    .transition(backdropTransition)
-                    .zIndex(1)
+                // 玻璃板只包住功能栏，与它同进同出；学习时长留在板外，不参与这块玻璃。
+                WorkspaceNavigationGlass(
+                    horizontalPadding: AppTheme.workspaceNavigationGlassPadding,
+                    verticalPadding: AppTheme.workspaceNavigationGlassVerticalPadding
+                )
+                .frame(width: AppTheme.workspaceNavigationWidth)
+                .padding(.top, AppTheme.workspaceNavigationTopInset)
+                .transition(backdropTransition)
+                .zIndex(1)
 
                 floatingNavigation
                     .padding(.top, AppTheme.workspaceNavigationTopInset)
@@ -419,7 +422,7 @@ struct WorkspaceShell<Content: View>: View {
         }
     }
 
-    private func scheduleHide(after delay: Duration = .milliseconds(650)) {
+    private func scheduleHide(after delay: Duration = AppTheme.workspaceNavigationHideDelay) {
         hideTask?.cancel()
         hideTask = Task { @MainActor in
             do {

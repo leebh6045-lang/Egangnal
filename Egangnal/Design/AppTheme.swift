@@ -18,15 +18,20 @@ enum AppTheme {
     static let workspaceNavigationActivationHeight: CGFloat = 24
     static let workspaceStudyTimeWidth: CGFloat = 150
     static let workspaceStudyTimeGap: CGFloat = 12
-    /// 功能栏唤出时顶部渐进材质带的高度（从窗口顶边算起）。
-    /// 数值来自 2026-09-13 的静态预览定稿：192 pt 能盖住页眉但不碰到第一行词条。
-    static let workspaceNavigationBackdropHeight: CGFloat = 192
-    /// 材质带顶端的面板色着色浓度，向下渐弱到零。
-    static let workspaceNavigationBackdropTint: Double = 0.35
-    /// 胶囊的面板色着色。2026-09-16 由 0.62 降到 0.38：着色越轻，透出的模糊内容越多，玻璃感越强。
-    static let workspaceNavigationCapsuleTint: Double = 0.38
-    /// 胶囊顶缘高光的不透明度；描边用它的两倍。
-    static let workspaceNavigationCapsuleSheen: Double = 0.10
+    /// 功能栏玻璃板比胶囊外扩的边距（2026-09-16）。
+    ///
+    /// 取代原 192 pt 的通栏渐变材质带：那条带子面积太大，把整页顶部都糊掉，
+    /// 与用户期望的"小面积、高质量玻璃"（Launchpad 质感）不符。现在只有薄薄一圈边。
+    static let workspaceNavigationGlassPadding: CGFloat = 8
+    /// 玻璃板与胶囊之间的垂直留白，比水平边距略小，贴合更紧。
+    static let workspaceNavigationGlassVerticalPadding: CGFloat = 6
+    /// 玻璃板的面板色着色。参考 Launchpad：模糊很重、着色很淡，透出来的内容才是主角。
+    static let workspaceNavigationGlassTint: Double = 0.12
+    /// 玻璃顶缘高光的不透明度；描边用它的两倍。
+    static let workspaceNavigationGlassSheen: Double = 0.12
+    /// 指针离开功能栏、学习时长与感应区之后，延迟多久收起。
+    /// 参考 macOS 程序坞：几百毫秒内退场，不长时间占着页面。
+    static let workspaceNavigationHideDelay: Duration = .milliseconds(200)
     static let backgroundGridSpacing: CGFloat = 28
     static let wordBookContentMinHeight: CGFloat = 150
     static let wordBookNavigationClearance: CGFloat = 56

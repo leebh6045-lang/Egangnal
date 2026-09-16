@@ -1,81 +1,77 @@
 //
-//  WorkspaceNavigationBackdrop.swift
+//  WorkspaceNavigationGlass.swift
 //  Egangnal
 //
 
 import SwiftUI
 
-/// 功能栏唤出时覆盖在页面顶部的渐进材质带。
+/// 功能栏的玻璃板：只比胶囊外扩一圈很窄的边，跟随功能栏一起显隐。
 ///
-/// 两层系统材质各用不同长度的渐变遮罩叠在一起，模糊从顶端向下减弱到零；
-/// 再叠一层面板色着色，浅色主题下材质不会发灰，深色主题下文字仍有足够对比。
-/// 材质跟随 SwiftUI 的 `colorScheme` 环境值（根视图已按应用主题设置），不读系统外观。
+/// 2026-09-16 由"通栏渐变材质带"改为本形状。原实现从窗口顶边向下铺 192 pt 的
+/// 材质渐变，把整页顶部都糊掉；用户的预期是 Launchpad 那种**小面积、高模糊**的玻璃，
+/// 因此改成贴合功能栏的一块板，面积只比胶囊大一圈。
 ///
-/// 系统材质的模糊半径固定、无法调节；设计定稿（2026-09-13）选择了系统材质，
-/// 顶端比 4 pt 的示意稿更糊，由着色与遮罩长度把观感压回来。
-struct WorkspaceNavigationBackdrop: View {
+/// 质感的三条来源：厚的系统材质（模糊重）、极淡的面板色着色（透出内容）、
+/// 顶缘一道 1 pt 高光加自上而下的薄光（玻璃受光的厚度感）。
+struct WorkspaceNavigationGlass: View {
     @Environment(\.appPalette) private var palette
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    /// 玻璃板相对内容外扩的尺寸，由调用方给出以贴合功能栏的实际大小。
+    let horizontalPadding: CGFloat
+    let verticalPadding: CGFloat
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: (AppTheme.workspaceNavigationHeight + verticalPadding * 2) / 2,
+            style: .continuous
+        )
+    }
+
     var body: some View {
         ZStack {
-            if !reduceTransparency {
-                Rectangle()
-                    .fill(.regularMaterial)
-                    .mask {
-                        LinearGradient(
-                            stops: [
-                                .init(color: .black, location: 0),
-                                .init(color: .black, location: 0.30),
-                                .init(color: .clear, location: 1)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
-
-                Rectangle()
-                    .fill(.regularMaterial)
-                    .mask {
-                        LinearGradient(
-                            stops: [
-                                .init(color: .black, location: 0),
-                                .init(color: .black, location: 0.10),
-                                .init(color: .clear, location: 0.55)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
+            if reduceTransparency {
+                // 减少透明度时退回不透明面板：没有模糊，文字仍要清楚。
+                shape.fill(palette.panel)
+            } else {
+                shape.fill(.thickMaterial)
+                shape.fill(palette.panel.opacity(AppTheme.workspaceNavigationGlassTint))
+                // 自顶向下的薄光，只覆盖上半部，下半部保持透明。
+                shape.fill(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(AppTheme.workspaceNavigationGlassSheen),
+                            .clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                )
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(AppTheme.workspaceNavigationGlassSheen * 2),
+                            .clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
             }
-
-            // 减少透明度时只保留着色：层次弱一些，但不会出现看不清的文字。
-            LinearGradient(
-                stops: [
-                    .init(
-                        color: palette.panel.opacity(AppTheme.workspaceNavigationBackdropTint),
-                        location: 0
-                    ),
-                    .init(
-                        color: palette.panel.opacity(AppTheme.workspaceNavigationBackdropTint * 0.45),
-                        location: 0.45
-                    ),
-                    .init(color: .clear, location: 1)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
         }
-        .frame(height: AppTheme.workspaceNavigationBackdropHeight)
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, verticalPadding)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 }
 
-/// 功能栏胶囊的背景：材质 + 轻着色 + 顶缘高光；减少透明度时退回不透明面板。
+/// 功能栏自身的底色。
 ///
-/// 着色只有 0.38（2026-09-16 定稿，原 0.62）：着色一重材质就像一块实板，
-/// 透出来的模糊内容才是"毛玻璃"的来源。顶缘一道 1 pt 高光模拟玻璃受光的边。
+/// 2026-09-16：玻璃质感移交给背后的 `WorkspaceNavigationGlass`，这里不再画材质——
+/// 否则会在同一块区域叠两层材质加两层着色，又变回"实板"。现在它只负责
+/// "减少透明度时给一个不透明底面"，其余情况保持透明，让玻璃板透出来。
 struct WorkspaceNavigationCapsuleBackground: View {
     @Environment(\.appPalette) private var palette
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -84,32 +80,6 @@ struct WorkspaceNavigationCapsuleBackground: View {
         ZStack {
             if reduceTransparency {
                 Capsule().fill(palette.panel)
-            } else {
-                Capsule().fill(.thinMaterial)
-                Capsule().fill(palette.panel.opacity(AppTheme.workspaceNavigationCapsuleTint))
-                // 从顶缘往下的一层薄光，让玻璃有厚度感；下半部保持透明。
-                Capsule().fill(
-                    LinearGradient(
-                        colors: [
-                            .white.opacity(AppTheme.workspaceNavigationCapsuleSheen),
-                            .clear
-                        ],
-                        startPoint: .top,
-                        endPoint: .center
-                    )
-                )
-                Capsule()
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(AppTheme.workspaceNavigationCapsuleSheen * 2),
-                                .clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        lineWidth: 1
-                    )
             }
         }
     }
