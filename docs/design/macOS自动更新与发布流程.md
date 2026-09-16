@@ -166,9 +166,13 @@ plutil -p \
 
 ```text
 SparkleReleases/
-├── Egangnal-1.0.1.zip
-└── Egangnal-1.0.1.md
+├── Egangnal-1.0.1.zip      ← 本地暂存，不入库（.gitignore）
+├── Egangnal-1.0.1.md       ← 入库，作为该版本的发布记录
+└── Egangnal-1.0.1.zip.sha256  ← 入库
 ```
+
+这个目录是**本地暂存区**：ZIP 放在这里是为了下一步生成 appcast 与上传 Release，
+提交时只带 `.md` 与 `.sha256`。ZIP 体积在 4–6 MB，且更新链只从 GitHub Release 取它。
 
 使用 `ditto` 压缩已签名应用，避免破坏 macOS 扩展属性：
 
@@ -198,24 +202,42 @@ find ~/Library/Developer/Xcode/DerivedData \
   -print -quit
 ```
 
-然后执行：
+**⚠️ 这一次发布只放"本次这一个 ZIP"进暂存目录**（2026-09-16 补记）。
+
+`--download-url-prefix` 会把目录里**所有** ZIP 的下载地址都改写成同一个前缀。
+若把历史版本的 ZIP 一并放进去，旧版本条目就会指向新 tag 下并不存在的资产——
+2026-09-13 发布 1.0.4 时真实发生过：1.0.1 与 1.0.2 的地址被改写成
+`.../download/v1.0.4/Egangnal-1.0.1.zip`，装了旧版本的用户点更新会下载失败。
+
+因此推荐的做法是**用一个干净的临时目录**生成，再把结果拷回来：
 
 ```bash
+rm -rf /tmp/eg-feed && mkdir -p /tmp/eg-feed
+cp SparkleReleases/Egangnal-1.0.6.zip SparkleReleases/Egangnal-1.0.6.md /tmp/eg-feed/
+
 /找到的路径/generate_appcast \
   --account com.ly.Egangnal \
-  --download-url-prefix 'https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.1/' \
+  --download-url-prefix 'https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.6/' \
   --embed-release-notes \
-  SparkleReleases
+  /tmp/eg-feed
+
+cp /tmp/eg-feed/appcast.xml updates/appcast.xml
 ```
+
+代价是不会有增量更新（`.delta`）——增量只在目录里同时存在"上一个版本"时才会生成。
+按需权衡：想要增量就把**确实存在对应 Release 资产**的上一版 ZIP 也放进去，
+并逐个核对生成结果里的每一个 `enclosure url`。
 
 工具会：
 
 - 从 ZIP 内读取版本号和最低系统版本。
 - 使用钥匙串中的私钥签名更新包。
-- 生成或更新 `SparkleReleases/appcast.xml`。
-- 为适合的历史版本生成增量更新；首版只有完整 ZIP 也可以正常更新。
+- 生成或更新暂存目录里的 `appcast.xml`（正式那份要拷到 `updates/appcast.xml`）。
+- 为适合的历史版本生成增量更新；只有完整 ZIP 也可以正常更新。
 
 生成签名后不要手动修改 ZIP。修改 ZIP 后必须重新运行 `generate_appcast`。
+
+**生成后必须核对**：`grep -oE 'url="[^"]+"' appcast.xml`，逐个确认地址里的 tag 与文件名都对得上。
 
 ### 5.6 上传文件
 
@@ -229,6 +251,12 @@ appcast.xml
 如果工具生成了 `.delta` 或其他辅助文件，也必须一并上传；不能只上传 XML。
 
 如果更新说明没有嵌入 Appcast，还需要上传对应的 HTML、Markdown 或文本说明文件。
+
+**这些产物都不进入仓库**（2026-09-16 起）：ZIP 作为 GitHub Release 资产上传即可，
+仓库里留一份副本对更新链没有任何作用，只会让仓库每次发布涨 4–6 MB。
+`SparkleReleases/*.zip` 已在 `.gitignore` 中；`.md`（更新说明）与 `.sha256`（校验值）仍然入库，
+作为每个版本的轻量发布记录。仓库里已入库的 1.0.1 / 1.0.2 / 1.0.4 / 1.0.5 四个 ZIP
+已于 2026-09-16 取消跟踪（历史提交里仍存在，未重写历史）。
 
 上传位置和顺序：
 

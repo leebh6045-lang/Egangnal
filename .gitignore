@@ -27,3 +27,6 @@ SparkleReleases/appcast.xml
 
 # 前端视觉参考稿：docs 下的 html 仅用于本地预览效果，不进入仓库
 docs/**/*.html
+
+# 发布产物：zip 只上传到 GitHub Release，不入库（19 MB 二进制，对更新链无用）
+SparkleReleases/*.zip
