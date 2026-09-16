@@ -60,10 +60,24 @@ struct WorkspaceNavigationGlass: View {
                 )
             }
         }
+        // 形状只画在"胶囊那一层"，四周留出窄边：板因此比胶囊大一圈，胶囊在板内居中。
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, verticalPadding)
+        // 尺寸显式写死，不吃父级的尺寸建议：2026-09-16 曾因为只给宽度、把高度留给父级建议，
+        // 板子被拉成"半屏高的深色矩形"。玻璃板必须只有"功能栏 + 一圈窄边"这么大。
+        .frame(width: plateWidth, height: plateHeight)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    /// 板宽 = 功能栏宽 + 两侧窄边。
+    private var plateWidth: CGFloat {
+        AppTheme.workspaceNavigationWidth + horizontalPadding * 2
+    }
+
+    /// 板高 = 功能栏高 + 上下窄边。高度必须显式给，否则形状会去填满父级。
+    private var plateHeight: CGFloat {
+        AppTheme.workspaceNavigationHeight + verticalPadding * 2
     }
 }
 

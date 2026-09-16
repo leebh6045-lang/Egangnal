@@ -115,12 +115,19 @@ struct WorkspaceShell<Content: View>: View {
 
             if isNavigationVisible {
                 // 玻璃板只包住功能栏，与它同进同出；学习时长留在板外，不参与这块玻璃。
+                //
+                // 为什么上边距要减去一个垂直窄边：板内部自带 verticalPadding 的内边距，
+                // 所以板顶 = 上边距 - narrow边，胶囊才落在与 floatingNavigation 相同的 y 上。
+                // 若两者都用同一个 inset，胶囊会整体下移 6 pt，与按钮位置错开。
                 WorkspaceNavigationGlass(
                     horizontalPadding: AppTheme.workspaceNavigationGlassPadding,
                     verticalPadding: AppTheme.workspaceNavigationGlassVerticalPadding
                 )
-                .frame(width: AppTheme.workspaceNavigationWidth)
-                .padding(.top, AppTheme.workspaceNavigationTopInset)
+                .padding(
+                    .top,
+                    AppTheme.workspaceNavigationTopInset
+                        - AppTheme.workspaceNavigationGlassVerticalPadding
+                )
                 .transition(backdropTransition)
                 .zIndex(1)
 
