@@ -72,7 +72,10 @@ struct WorkspaceNavigationBackdrop: View {
     }
 }
 
-/// 功能栏胶囊的背景：材质 + 面板色着色；减少透明度时退回不透明面板。
+/// 功能栏胶囊的背景：材质 + 轻着色 + 顶缘高光；减少透明度时退回不透明面板。
+///
+/// 着色只有 0.38（2026-09-16 定稿，原 0.62）：着色一重材质就像一块实板，
+/// 透出来的模糊内容才是"毛玻璃"的来源。顶缘一道 1 pt 高光模拟玻璃受光的边。
 struct WorkspaceNavigationCapsuleBackground: View {
     @Environment(\.appPalette) private var palette
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -82,8 +85,31 @@ struct WorkspaceNavigationCapsuleBackground: View {
             if reduceTransparency {
                 Capsule().fill(palette.panel)
             } else {
-                Capsule().fill(.regularMaterial)
+                Capsule().fill(.thinMaterial)
                 Capsule().fill(palette.panel.opacity(AppTheme.workspaceNavigationCapsuleTint))
+                // 从顶缘往下的一层薄光，让玻璃有厚度感；下半部保持透明。
+                Capsule().fill(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(AppTheme.workspaceNavigationCapsuleSheen),
+                            .clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                )
+                Capsule()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                .white.opacity(AppTheme.workspaceNavigationCapsuleSheen * 2),
+                                .clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
             }
         }
     }

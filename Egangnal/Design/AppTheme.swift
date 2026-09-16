@@ -23,8 +23,10 @@ enum AppTheme {
     static let workspaceNavigationBackdropHeight: CGFloat = 192
     /// 材质带顶端的面板色着色浓度，向下渐弱到零。
     static let workspaceNavigationBackdropTint: Double = 0.35
-    /// 胶囊背后已经是被模糊过的内容，着色要比材质带重，否则显得虚。
-    static let workspaceNavigationCapsuleTint: Double = 0.62
+    /// 胶囊的面板色着色。2026-09-16 由 0.62 降到 0.38：着色越轻，透出的模糊内容越多，玻璃感越强。
+    static let workspaceNavigationCapsuleTint: Double = 0.38
+    /// 胶囊顶缘高光的不透明度；描边用它的两倍。
+    static let workspaceNavigationCapsuleSheen: Double = 0.10
     static let backgroundGridSpacing: CGFloat = 28
     static let wordBookContentMinHeight: CGFloat = 150
     static let wordBookNavigationClearance: CGFloat = 56

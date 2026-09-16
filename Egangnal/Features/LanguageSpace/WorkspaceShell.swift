@@ -58,8 +58,6 @@ struct WorkspaceShell<Content: View>: View {
 
     @State private var isNavigationVisible = false
     @State private var hideTask: Task<Void, Never>?
-    @State private var entryRevealTask: Task<Void, Never>?
-    @State private var isEntryRevealActive = false
     @State private var isActivationAreaHovered = false
     @State private var isFunctionBarHovered = false
     @State private var isStudyTimeHovered = false
@@ -178,7 +176,6 @@ struct WorkspaceShell<Content: View>: View {
         }
         .onDisappear {
             hideTask?.cancel()
-            entryRevealTask?.cancel()
         }
     }
 
@@ -403,16 +400,15 @@ struct WorkspaceShell<Content: View>: View {
         }
     }
 
+    /// 每次从首页进入只做一件事：有启动页就播；功能栏不再自动唤出（2026-09-16 用户决定，
+    /// 它与"灯亮"启动页的光线冲突），仍靠鼠标靠近顶部或快捷键唤出。
     private func revealForEntryIfNeeded() {
         guard entryRevealID > 0, handledEntryRevealID != entryRevealID else {
             return
         }
         handledEntryRevealID = entryRevealID
-        // 有启动页时功能栏的新手提示延后到启动页结束，否则它会在幕布底下白白闪过。
         if entryCeremony != nil {
             isCeremonyPlaying = true
-        } else {
-            revealNavigationForEntry()
         }
     }
 
@@ -421,29 +417,9 @@ struct WorkspaceShell<Content: View>: View {
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
             isCeremonyPlaying = false
         }
-        revealNavigationForEntry()
-    }
-
-    private func revealNavigationForEntry() {
-        entryRevealTask?.cancel()
-        isEntryRevealActive = true
-        showNavigation()
-        entryRevealTask = Task { @MainActor in
-            do {
-                try await Task.sleep(for: .seconds(3))
-            } catch {
-                return
-            }
-            guard !Task.isCancelled else { return }
-            entryRevealTask = nil
-            isEntryRevealActive = false
-            guard !isPointerInsideNavigation else { return }
-            hideNavigation()
-        }
     }
 
     private func scheduleHide(after delay: Duration = .milliseconds(650)) {
-        guard !isEntryRevealActive else { return }
         hideTask?.cancel()
         hideTask = Task { @MainActor in
             do {
@@ -452,7 +428,6 @@ struct WorkspaceShell<Content: View>: View {
                 return
             }
             guard !Task.isCancelled,
-                  !isEntryRevealActive,
                   !isPointerInsideNavigation else { return }
             hideTask = nil
             hideNavigation()
@@ -500,9 +475,6 @@ struct WorkspaceShell<Content: View>: View {
     private func hideImmediately() {
         hideTask?.cancel()
         hideTask = nil
-        entryRevealTask?.cancel()
-        entryRevealTask = nil
-        isEntryRevealActive = false
         isCeremonyPlaying = false
         isActivationAreaHovered = false
         isFunctionBarHovered = false
