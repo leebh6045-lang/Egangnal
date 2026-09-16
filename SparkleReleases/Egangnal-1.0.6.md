@@ -1,15 +1,4 @@
-<?xml version="1.0" standalone="yes"?>
-<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
-    <channel>
-        <title>Egangnal</title>
-        <item>
-            <title>1.0.6</title>
-            <pubDate>Thu, 17 Sep 2026 00:28:39 +0800</pubDate>
-            <sparkle:version>7</sparkle:version>
-            <sparkle:shortVersionString>1.0.6</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Egangnal 1.0.6
+# Egangnal 1.0.6
 
 本次更新打磨顶部功能栏的观感与唤出方式。
 
@@ -30,8 +19,3 @@
 - 修复功能栏选中块在按钮之间**硬切**的问题，改为弹簧滑动。
 - 修复功能页之间切换时**闪一下**的问题：原先每个页面各画一遍背景，两层背景半透明叠加导致中途亮暗一截；
   现在背景只画一次。
-]]></description>
-            <enclosure url="https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.6/Egangnal-1.0.6.zip" length="6019076" type="application/octet-stream" sparkle:edSignature="nC+dUqVypv5WKU/t/5QmmJeNY9hdYK3OQ+h/8wQcbH/+qPMvltEl9PqGKSrEBdfOC4RDDkvyh25PjxnEtZnaDA=="/>
-        </item>
-    </channel>
-</rss>
