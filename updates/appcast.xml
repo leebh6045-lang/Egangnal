@@ -3,35 +3,27 @@
     <channel>
         <title>Egangnal</title>
         <item>
-            <title>1.0.6</title>
-            <pubDate>Thu, 17 Sep 2026 00:28:39 +0800</pubDate>
-            <sparkle:version>7</sparkle:version>
-            <sparkle:shortVersionString>1.0.6</sparkle:shortVersionString>
+            <title>1.0.7</title>
+            <pubDate>Fri, 25 Sep 2026 13:17:24 +0800</pubDate>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>1.0.7</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# Egangnal 1.0.6
+            <description sparkle:format="markdown"><![CDATA[# Egangnal 1.0.7
 
-本次更新打磨顶部功能栏的观感与唤出方式。
+本次更新更换了英语空间卡片的封面图，并启用新的应用图标。
 
-## 功能栏玻璃
+## 界面
 
-- 一级菜单换成小面积、高模糊的玻璃板：只比功能栏外扩一圈窄边，不再是一条通栏材质带。
-- 模糊更重、着色更淡，透出的页面内容成了主角，接近系统程序坞与启动台的质感。
-- 顶缘加了高光与细描边，玻璃有厚度感。
+- **英语卡片换了新封面**：首页英语入口的底图更新为新的画面。
+- **新的应用图标**：图标改为带玻璃高光与圆角的方形，与 macOS 的应用图标风格更一致。
 
-## 唤出方式
+## 说明
 
-- 进入语言空间时**不再自动弹出功能栏**——它会和开场光线打架。现在只播开场，功能栏一律靠光标靠近顶部唤出。
-- 收起更快：光标离开后约 0.2 秒退场（原来要等 0.65 秒），不再长时间挡住页面。
-- 学习时长显示在玻璃板之外，不参与这块玻璃。
-
-## 一并修掉的问题
-
-- 修复功能栏选中块在按钮之间**硬切**的问题，改为弹簧滑动。
-- 修复功能页之间切换时**闪一下**的问题：原先每个页面各画一遍背景，两层背景半透明叠加导致中途亮暗一截；
-  现在背景只画一次。
+- 卡片封面只是入口的视觉，不影响单词本、词库与学习时长的数据。
+- 如果更新后 Dock 或访达里仍是旧图标，那是系统的图标缓存；把应用拖出 Dock 再拖回来，或重启一次即可。
 ]]></description>
-            <enclosure url="https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.6/Egangnal-1.0.6.zip" length="6019076" type="application/octet-stream" sparkle:edSignature="nC+dUqVypv5WKU/t/5QmmJeNY9hdYK3OQ+h/8wQcbH/+qPMvltEl9PqGKSrEBdfOC4RDDkvyh25PjxnEtZnaDA=="/>
+            <enclosure url="https://github.com/leebh6045-lang/Egangnal/releases/download/v1.0.7/Egangnal-1.0.7.zip" length="4689605" type="application/octet-stream" sparkle:edSignature="tEqfv+JcJKZlaaaDaPEqCldI/+F45v+iF8OVeBchnF4c+mYAYH7SqYPCTC1ezjcUUQjSRa3aWN9Fg894AACMDg=="/>
         </item>
     </channel>
 </rss>
