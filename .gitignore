@@ -30,3 +30,7 @@ docs/**/*.html
 
 # 发布产物：zip 只上传到 GitHub Release，不入库（19 MB 二进制，对更新链无用）
 SparkleReleases/*.zip
+
+# 毕业设计材料：与 App 无关，且含学号姓名等个人信息，绝不入库
+# 注意仓库是公开的（GitHub Releases 与 Sparkle 更新源都在用），一旦推送就会被公开检索到
+docs/毕业设计/
